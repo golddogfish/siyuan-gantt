@@ -1,9 +1,5 @@
 # Gantt Chart Widget
 
-<p align="center">
-  <img src="icon.png" width="128" height="128" alt="Gantt Chart Icon">
-</p>
-
 A Gantt chart visualization widget for SiYuan Note, displaying project timelines from database views.
 
 > 🤖 **This widget is entirely designed and developed with the assistance of AI.**
