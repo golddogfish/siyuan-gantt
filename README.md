@@ -27,13 +27,17 @@ A Gantt chart visualization widget for SiYuan Note, displaying project timelines
 
 ### 1. Prepare Database
 
-#### Option A: Use Recommended Template (Recommended)
+#### Option A: Use Provided Template (Easiest)
 
-This widget is recommended to be used with the [SiYuan Note Project Management Database Template](https://ld246.com/article/1732722385803).
+Download `甘特图模板.sy.zip` from this repository and import it into SiYuan Note. Ready to use immediately.
+
+#### Option B: Use Recommended Template
+
+This widget also supports the [SiYuan Note Project Management Database Template](https://ld246.com/article/1732722385803).
 
 **Important**: When using this template, you need to rename the first「状态」(Status) column to「完成情况」(Completion Status) to avoid conflicts with the second「状态」column, and to allow the widget to read data correctly.
 
-#### Option B: Create Database Manually
+#### Option C: Create Database Manually
 
 Create a database in SiYuan Note with the following columns:
 
@@ -99,10 +103,6 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 - Support week and month views
 - Support custom status colors
 - Support filtering specific statuses
-
-## License
-
-MIT License
 
 ## Author
 
