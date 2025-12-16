@@ -2,7 +2,7 @@
 
 A Gantt chart visualization widget for SiYuan Note, displaying project timelines from database views.
 
-> 🤖 **This widget is designed and developed with the assistance of AI.**
+> 🤖 **This widget is entirely designed and developed by AI.**
 >
 > 📦 **Based on [FullCalendar](https://fullcalendar.io/) open-source project.**
 
@@ -103,6 +103,10 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 - Support week and month views
 - Support custom status colors
 - Support filtering specific statuses
+
+## License
+
+GPL-3.0 License
 
 ## Author
 
