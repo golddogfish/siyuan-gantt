@@ -12,8 +12,8 @@ A Gantt chart visualization widget for SiYuan Note, displaying project timelines
 - ✅ Switch between week and month views
 - ✅ Today indicator line (red) with date header highlight
 - ✅ Weekend background highlighting
-- ✅ Drag and drop to adjust project timelines (horizontal only)
-- ✅ Right-click to change status directly on the Gantt chart
+- ✅ **Drag and drop to adjust timelines, database auto-syncs**
+- ✅ **Right-click to change status, database auto-syncs**
 - ✅ Custom status colors
 - ✅ Filter specific statuses
 - ✅ Auto-save configuration
@@ -60,8 +60,11 @@ Click the ⚙️ button in the top-right corner:
 ### 4. View Gantt Chart
 
 - Use toolbar to switch between week/month views
-- Drag color blocks to adjust project timelines
+- **Drag color blocks to adjust timelines** - database auto-syncs
+- **Right-click color blocks to change status** - database auto-syncs
 - Scroll to view more projects
+
+> ⚠️ **Sync Tip**: If data is not synced, click the ⚙️ button in the top-right corner, then click "Save and Refresh" to reload data.
 
 ## Configuration
 
