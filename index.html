@@ -887,6 +887,22 @@
         refreshData();
     });
 
+    // 防抖刷新需要的全局变量
+    let lastRefreshTime = 0;
+    const REFRESH_DEBOUNCE = 1000;  // 1秒内的多次变化只刷新一次
+    
+    // 防抖刷新，避免短时间内多次刷新
+    function debouncedRefresh() {
+        const now = Date.now();
+        if (now - lastRefreshTime < REFRESH_DEBOUNCE) {
+            return;
+        }
+        lastRefreshTime = now;
+        
+        console.log('检测到数据库变化，自动刷新甘特图');
+        refreshData();
+    }
+
     // 初始化日历
     function initCalendar() {
         var calendarEl = document.getElementById('calendar');
@@ -896,7 +912,7 @@
             schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source',
             locale: 'zh-cn',
             headerToolbar: {
-                left: 'today prev,next',
+                left: 'refreshButton today prev,next',
                 center: 'title',
                 right: 'resourceTimelineWeek,resourceTimelineMonth settingsButton'
             },
@@ -906,6 +922,21 @@
                     click: function() {
                         openColorConfig();
                     }
+                }
+                ,
+                refreshButton: {
+                    text: '刷新',
+                    click: function() {
+                        // 手动刷新数据
+                        try {
+                            console.log('手动刷新：用户触发刷新按钮');
+                            refreshData();
+                        } catch (e) {
+                            console.error('刷新失败', e);
+                        }
+                    },
+                    // 提示文字
+                    title: '刷新甘特图'
                 }
             },
             initialView: 'resourceTimelineWeek',
@@ -922,6 +953,9 @@
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
                         scrollToTodayCenter();
+                        // 视图切换后重新设置滚动同步
+                        setupScrollSync();
+                        // 仅使用 headerToolbar 中配置的 refreshButton
                     });
                 });
             },
@@ -1035,7 +1069,92 @@
         });
 
         calendar.render();
+        
+        // 修复：强制同步头部日期栏和甘特条区域的水平滚动
+        // 延迟执行以确保 FullCalendar 完全渲染
+        setTimeout(function() {
+            setupScrollSync();
+        }, 100);
     }
+    
+    // 滚动同步相关变量（放在函数外部避免重复创建）
+    let scrollSyncSetup = false;
+    let lastHeaderScroller = null;
+    let lastBodyScroller = null;
+    
+    // 设置头部和内容区域的滚动同步
+    function setupScrollSync() {
+        // 找到头部滚动容器和内容滚动容器
+        const headerScroller = document.querySelector('.fc-timeline-header .fc-scroller');
+        const bodyScroller = document.querySelector('.fc-timeline-body .fc-scroller');
+        
+        if (!headerScroller || !bodyScroller) {
+            console.log('滚动容器未找到，稍后重试');
+            setTimeout(setupScrollSync, 200);
+            return;
+        }
+        
+        // 如果是相同的容器元素，说明已经设置过了
+        if (scrollSyncSetup && headerScroller === lastHeaderScroller && bodyScroller === lastBodyScroller) {
+            return;
+        }
+        
+        // 记录当前容器，用于后续比较
+        lastHeaderScroller = headerScroller;
+        lastBodyScroller = bodyScroller;
+        scrollSyncSetup = true;
+        
+        let isSyncing = false;
+        let scrollEndTimer = null;
+        
+        // 同步函数 - 强制两个容器的 scrollLeft 一致
+        function syncScroll(source, target) {
+            if (isSyncing) return;
+            isSyncing = true;
+            
+            // 使用 requestAnimationFrame 确保在下一帧同步，避免抖动
+            requestAnimationFrame(function() {
+                target.scrollLeft = source.scrollLeft;
+                isSyncing = false;
+            });
+        }
+        
+        // 滚动结束处理
+        function onScrollEnd() {
+            clearTimeout(scrollEndTimer);
+            scrollEndTimer = setTimeout(function() {
+                // 滚动停止后，强制同步到内容区域的位置
+                if (headerScroller && bodyScroller) {
+                    headerScroller.scrollLeft = bodyScroller.scrollLeft;
+                }
+            }, 150);
+        }
+        
+        // 使用带标识的事件监听器，便于管理
+        function headerScrollHandler() {
+            syncScroll(headerScroller, bodyScroller);
+            onScrollEnd();
+        }
+        
+        function bodyScrollHandler() {
+            syncScroll(bodyScroller, headerScroller);
+            onScrollEnd();
+        }
+        
+        // 移除旧监听器（如果存在）并添加新监听器
+        headerScroller.removeEventListener('scroll', headerScroller._syncHandler);
+        bodyScroller.removeEventListener('scroll', bodyScroller._syncHandler);
+        
+        headerScroller._syncHandler = headerScrollHandler;
+        bodyScroller._syncHandler = bodyScrollHandler;
+        
+        headerScroller.addEventListener('scroll', headerScrollHandler, { passive: true });
+        bodyScroller.addEventListener('scroll', bodyScrollHandler, { passive: true });
+        
+        console.log('滚动同步已设置');
+    }
+
+        
 
     // ==========================================
     // 数据获取与刷新
