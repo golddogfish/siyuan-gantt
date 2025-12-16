@@ -674,6 +674,7 @@ may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
+<<<<<<< HEAD
 
 ---
 
@@ -689,3 +690,5 @@ FullCalendar Scheduler is free for open-source projects under the GPL-3.0 Licens
 For commercial use, a commercial license is required.
 
 See: https://fullcalendar.io/license
+=======
+>>>>>>> 559feb2f28240ffabcad5214d50f53e94a05ae76
