@@ -27,12 +27,22 @@ A Gantt chart visualization widget for SiYuan Note, displaying project timelines
 
 ### 1. Prepare Database
 
+#### Option A: Use Recommended Template (Recommended)
+
+This widget is recommended to be used with the [SiYuan Note Project Management Database Template](https://ld246.com/article/1732722385803).
+
+**Important**: When using this template, you need to rename the default column「完成情况」(Completion Status) to「状态」(Status) for the widget to read data correctly.
+
+#### Option B: Create Database Manually
+
 Create a database in SiYuan Note with the following columns:
 
-- **Project Name/Title**: Name of the project
-- **Status**: Project status (single select type)
-- **Start Date**: Project start date
-- **End Date**: Project end date
+- **Project Name/Title**: Name of the project (支持：项目内容、项目名称、标题、headline)
+- **Status**: Project status - single select type (支持：状态、status)
+- **Start Date**: Project start date (支持：开始日、开始时间、开始日期、start)
+- **End Date**: Project end date (支持：截止日、截止时间、截止日期、end)
+
+> 💡 **Column Name Recognition**: The widget automatically recognizes the following column names (Chinese and English supported)
 
 ### 2. Insert Widget
 
