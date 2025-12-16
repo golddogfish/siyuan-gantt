@@ -1,4 +1,6 @@
-                    GNU AFFERO GENERAL PUBLIC LICENSE
+siyuan-gantt - Gantt Chart Widget for SiYuan Note
+Copyright (C) 2025 golddogfish
+GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
@@ -659,3 +661,16 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
+
+## Third-Party Licenses
+
+### FullCalendar Scheduler
+
+This project uses [FullCalendar Scheduler](https://fullcalendar.io/), which is used under the GPL-3.0 License for open-source projects.
+
+FullCalendar Scheduler is Copyright (c) FullCalendar LLC.
+
+FullCalendar Scheduler is free for open-source projects under the GPL-3.0 License.
+For commercial use, a commercial license is required.
+
+See: https://fullcalendar.io/license
