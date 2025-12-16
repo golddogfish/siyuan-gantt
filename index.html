@@ -1099,7 +1099,7 @@
                 return view.columns.find(col => names.includes(col.name));
             };
 
-            const nameCol = findColumn(['项目内容', '项目名称', '标题', 'headline']);
+            const nameCol = findColumn(['TODO', '项目内容', '项目名称', '标题', 'headline']);
             const statusCol = findColumn(['状态', 'status']);
             const startCol = findColumn(['开始日', '开始时间', '开始日期', 'start']);
             const endCol = findColumn(['截止日', '截止时间', '截止日期', 'end']);
@@ -1212,7 +1212,7 @@
             }
 
             if (!nameCol) {
-                showError('未找到项目名称列（支持：项目内容、项目名称、标题）');
+                showError('未找到项目名称列（支持：TODO、项目内容、项目名称、标题）');
                 return;
             }
 

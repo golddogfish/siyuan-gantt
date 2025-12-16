@@ -37,7 +37,7 @@ This widget is recommended to be used with the [SiYuan Note Project Management D
 
 Create a database in SiYuan Note with the following columns:
 
-- **Project Name/Title**: Name of the project (支持：项目内容、项目名称、标题、headline)
+- **Project Name/Title**: Name of the project (支持：TODO、项目内容、项目名称、标题、headline)
 - **Status**: Project status - single select type (支持：状态、status)
 - **Start Date**: Project start date (支持：开始日、开始时间、开始日期、start)
 - **End Date**: Project end date (支持：截止日、截止时间、截止日期、end)
