@@ -2,7 +2,7 @@
 
 A Gantt chart visualization widget for SiYuan Note, displaying project timelines from database views.
 
-> 🤖 **This widget is entirely designed and developed with the assistance of AI.**
+> 🤖 **This widget is designed and developed with the assistance of AI.**
 >
 > 📦 **Based on [FullCalendar](https://fullcalendar.io/) open-source project.**
 
