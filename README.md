@@ -29,7 +29,7 @@ A Gantt chart visualization widget for SiYuan Note, displaying project timelines
 
 #### Option A: Use Provided Template (Easiest)
 
-Download `甘特图模板.sy.zip` from this repository and import it into SiYuan Note. Ready to use immediately.
+Download [`甘特图模板.sy.zip`](https://github.com/golddogfish/siyuan-gantt/raw/main/甘特图模板.sy.zip) from this repository and import it into SiYuan Note. Ready to use immediately.
 
 #### Option B: Use Recommended Template
 
