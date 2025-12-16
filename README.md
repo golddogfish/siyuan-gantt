@@ -31,7 +31,7 @@ A Gantt chart visualization widget for SiYuan Note, displaying project timelines
 
 This widget is recommended to be used with the [SiYuan Note Project Management Database Template](https://ld246.com/article/1732722385803).
 
-**Important**: When using this template, you need to rename the default column「完成情况」(Completion Status) to「状态」(Status) for the widget to read data correctly.
+**Important**: When using this template, you need to rename the first「状态」(Status) column to「完成情况」(Completion Status) to avoid conflicts with the second「状态」column, and to allow the widget to read data correctly.
 
 #### Option B: Create Database Manually
 
