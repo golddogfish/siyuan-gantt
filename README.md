@@ -76,6 +76,15 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 
 ## Changelog
 
+### v1.3.0 (2025-12-17)
+
+- ✨ New: Added **Light (bright) theme** and theme-detection on each refresh — widget now matches SiYuan's bright/dark mode when you click `刷新`.
+- 🔧 Improved: Theme application now toggles classes on `html`/`body`/`#calendar` and forces FullCalendar layout refresh so styles take effect reliably.
+- 🔧 Fixed: Settings panel (配色/状态复选框) now shows dark text on light theme and inputs/checkboxes are styled correctly.
+- 🔧 Fixed: Today indicator and header underline retain the red styling in light theme and are not clipped by header backgrounds.
+- 🔧 Improved: Scroll-sync between header and timeline is more robust (tries multiple selectors, short retries, and a one-time MutationObserver fallback).
+- 🔧 Misc: Various small UI fixes and logging improvements.
+
 ### v1.2.0 (2025-12-16)
 
 - ✨ New: Right-click on Gantt bars to change status directly
