@@ -293,6 +293,24 @@
             border-bottom: 3px solid #dc3545 !important;
         }
 
+        /* 明亮主题下也强制保留红色下划线（覆盖任何表头默认边框） */
+        .gantt-theme-light .fc-timeline-slot.fc-day-today,
+        .gantt-theme-light .fc-day-today.fc-timeline-slot-frame,
+        .gantt-theme-light .fc-col-header-cell.fc-day-today {
+            border-bottom: 3px solid #dc3545 !important;
+            box-shadow: none !important;
+        }
+
+        /* 如果头部有覆盖层（白色块）遮挡 now-indicator 的显示，提升 now-indicator 的 z-index
+           并确保 header 不使用更高的 z-index */
+        .gantt-theme-light .fc .fc-col-header-cell {
+            z-index: 2 !important;
+        }
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-line,
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-arrow {
+            z-index: 9999999 !important;
+        }
+
         /* 周末背景颜色 */
         .fc-day-sat {
             background-color: #2a2a2a !important;
@@ -373,6 +391,208 @@
 
         .fc-timeline-lane-frame {
             overflow: hidden !important;
+        }
+        /* -- Light theme overrides -- */
+        /* 启用方法：在 <html> 上添加类 `gantt-theme-light` */
+        .gantt-theme-light body {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        .gantt-theme-light input,
+        .gantt-theme-light select,
+        .gantt-theme-light button {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #dcdcdc !important;
+        }
+
+        .gantt-theme-light .color-config-panel {
+            background: #ffffff !important;
+            border-color: #e6e6e6 !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+            color: #111 !important;
+        }
+
+        .gantt-theme-light .overlay {
+            background: rgba(0,0,0,0.06) !important;
+        }
+
+        .gantt-theme-light .context-menu {
+            background: #ffffff !important;
+            border: 1px solid #e6e6e6 !important;
+            color: #111 !important;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06) !important;
+        }
+
+        .gantt-theme-light .fc {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        .gantt-theme-light .fc-col-header-cell {
+            background-color: #f7f7f7 !important;
+            color: #111 !important;
+            border-color: #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .fc-theme-standard td, .gantt-theme-light .fc-theme-standard th {
+            border-color: #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .fc-datagrid-cell-frame {
+            background-color: #ffffff !important;
+        }
+
+        .gantt-theme-light .fc-day-sat,
+        .gantt-theme-light .fc-day-sun {
+            background-color: #fbfbfb !important;
+        }
+
+        /* 修复：在明亮主题下，FullCalendar 的时间轴区域（甘特区域）仍然被默认深色覆盖。
+           使用更高优先级的选择器强制覆盖这些区域为白色背景和深色文本。 */
+        .gantt-theme-light .fc .fc-timeline-body,
+        .gantt-theme-light .fc .fc-timeline-slot,
+        .gantt-theme-light .fc .fc-timeline-lane,
+        .gantt-theme-light .fc .fc-timeline-lane-frame,
+        .gantt-theme-light .fc .fc-timeline-events,
+        .gantt-theme-light .fc .fc-scroller,
+        .gantt-theme-light .fc .fc-timeline-slots {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        /* 调整今日指示线和网格线在明亮主题下的显示 */
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line {
+            border-color: #dc3545 !important;
+        }
+
+        /* 强制在明亮主题下，让今日指示线保持鲜红并高于表头/网格，防止被遮盖或变灰 */
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line {
+            border-color: #dc3545 !important;
+            background-color: #dc3545 !important;
+            box-shadow: none !important;
+            opacity: 1 !important;
+            z-index: 99999 !important;
+        }
+
+        /* 如果有伪元素或箭头，把它也设为红色并确保可见 */
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line::before,
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line::after {
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+            opacity: 1 !important;
+        }
+
+        /* 额外修正：轴（header）位置的 now-indicator 箭头/线在明亮主题下也应为红色并可见 */
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-arrow,
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-line {
+            border-color: #dc3545 !important;
+            background-color: transparent !important;
+            opacity: 1 !important;
+            box-shadow: none !important;
+            z-index: 999999 !important;
+        }
+
+        /* 确保轴（header）容器不会裁剪 now-indicator 的显示 */
+        .gantt-theme-light .fc .fc-timegrid-col-frame,
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-container {
+            overflow: visible !important;
+        }
+
+        /* 箭头具体颜色（左右兼容） */
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-arrow {
+            border-left-color: #dc3545 !important;
+            border-right-color: #dc3545 !important;
+        }
+
+        /* 更可靠的明亮主题覆盖：使用 FullCalendar 的 CSS 变量并覆盖关键容器，
+           以确保 timeline/timegrid/slots 等区域也能成为白底深色文本 */
+        .gantt-theme-light .fc {
+            /* 页面与中性背景 */
+            --fc-page-bg-color: #ffffff !important;
+            --fc-neutral-bg-color: #ffffff !important;
+            --fc-border-color: #e9e9e9 !important;
+            /* 时间轴格子背景 */
+            --fc-daygrid-bg: #ffffff !important;
+            /* 事件文字颜色 */
+            --fc-event-text-color: #111111 !important;
+            --fc-event-bg-color: #3788d8 !important;
+        }
+
+        /* 额外覆盖：针对 timegrid/timeline 的实际 DOM 容器 */
+        .gantt-theme-light .fc .fc-timegrid-col-bg,
+        .gantt-theme-light .fc .fc-timegrid-slot,
+        .gantt-theme-light .fc .fc-timegrid-slot-lane,
+        .gantt-theme-light .fc .fc-timegrid-col-frame,
+        .gantt-theme-light .fc .fc-timegrid-slots,
+        .gantt-theme-light .fc .fc-timegrid-cols,
+        .gantt-theme-light .fc .fc-timeline-body,
+        .gantt-theme-light .fc .fc-timeline-slot {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        /* 覆盖滚动区和填充层（防止底色被遮盖） */
+        .gantt-theme-light .fc .fc-scrollgrid-section-liquid,
+        .gantt-theme-light .fc .fc-scrollgrid-section > .fc-scrollgrid-section-inner {
+            background-color: #ffffff !important;
+        }
+
+        /* 配置面板内项目（status checkbox / color items）在明亮主题下也要为白底 */
+        .gantt-theme-light .status-checkbox,
+        .gantt-theme-light .color-item {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .color-config-panel {
+            background: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        /* 修复设置面板的字体颜色：确保所有控件在明亮主题下为深色文本 */
+        .gantt-theme-light .color-config-panel,
+        .gantt-theme-light .color-config-panel * {
+            color: #111111 !important;
+        }
+
+        .gantt-theme-light .color-config-panel input[type="text"],
+        .gantt-theme-light .color-config-panel input[type="color"],
+        .gantt-theme-light .color-config-panel textarea,
+        .gantt-theme-light .color-config-panel select {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .color-config-panel input::placeholder {
+            color: #dc3545 !important;
+            opacity: 1 !important;
+        }
+
+        .gantt-theme-light .status-checkbox,
+        .gantt-theme-light .color-item {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #e9e9e9 !important;
+            opacity: 1 !important;
+        }
+
+        .gantt-theme-light .status-checkbox input[type="checkbox"] {
+            accent-color: #0078d4; /* 现代浏览器优先样式 */
+        }
+
+        .gantt-theme-light .status-checkbox label {
+            color: #111111 !important;
+            opacity: 1 !important;
+        }
+
+        .gantt-theme-light .fc-button {
+            background-color: #0078d4 !important;
+            border-color: #0078d4 !important;
+            color: white !important;
         }
     </style>
 </head>
@@ -1081,17 +1301,64 @@
     let scrollSyncSetup = false;
     let lastHeaderScroller = null;
     let lastBodyScroller = null;
+    let scrollSyncAttempts = 0; // 重试计数，避免无限重试
+    let scrollSyncObserver = null; // MutationObserver 的引用，确保只创建一次
     
     // 设置头部和内容区域的滚动同步
     function setupScrollSync() {
-        // 找到头部滚动容器和内容滚动容器
-        const headerScroller = document.querySelector('.fc-timeline-header .fc-scroller');
-        const bodyScroller = document.querySelector('.fc-timeline-body .fc-scroller');
-        
+        // 找到头部滚动容器和内容滚动容器（尽量尝试多种选择器/策略以保证稳定）
+        let headerScroller = document.querySelector('.fc-timeline-header .fc-scroller') || document.querySelector('.fc-col-header .fc-scroller');
+        let bodyScroller = document.querySelector('.fc-timeline-body .fc-scroller') || document.querySelector('.fc-timegrid-cols .fc-scroller');
+
+        // 回退：在日历内寻找所有可水平滚动的容器，取最上方作为 header，最下方作为 body
         if (!headerScroller || !bodyScroller) {
-            console.log('滚动容器未找到，稍后重试');
-            setTimeout(setupScrollSync, 200);
+            const scs = Array.from(document.querySelectorAll('#calendar .fc-scroller'))
+                .filter(s => s.scrollWidth > s.clientWidth + 2); // 有实际可横向滚动的容器
+            if (scs.length >= 2) {
+                scs.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+                headerScroller = headerScroller || scs[0];
+                bodyScroller = bodyScroller || scs[scs.length - 1];
+            }
+        }
+
+        if (!headerScroller || !bodyScroller) {
+            scrollSyncAttempts = (scrollSyncAttempts || 0) + 1;
+            // 如果短时间内重试次数未超过3次，继续使用短延迟重试（快速场景）
+            if (scrollSyncAttempts <= 3) {
+                console.log('滚动容器未找到，稍后重试（尝试次数', scrollSyncAttempts, ')');
+                setTimeout(setupScrollSync, 200);
+                return;
+            }
+            // 超过快速重试次数后，使用 MutationObserver 监听 '#calendar' 区域，出现 scroller 时绑定一次
+            if (!scrollSyncObserver) {
+                try {
+                    const calendarEl = document.getElementById('calendar');
+                    if (calendarEl && 'MutationObserver' in window) {
+                        scrollSyncObserver = new MutationObserver((mutations, obs) => {
+                            const found = document.querySelector('.fc-timeline-header .fc-scroller') || document.querySelector('.fc-timeline-body .fc-scroller') || document.querySelectorAll('#calendar .fc-scroller').length > 0;
+                            if (found) {
+                                try { obs.disconnect(); } catch (e) {}
+                                scrollSyncObserver = null;
+                                // 下一轮立即尝试绑定
+                                setTimeout(setupScrollSync, 50);
+                            }
+                        });
+                        scrollSyncObserver.observe(calendarEl, { childList: true, subtree: true });
+                        console.log('滚动容器未找到，已启动 MutationObserver 等待 DOM 更新');
+                    } else {
+                        console.warn('滚动容器未找到，也无法使用 MutationObserver，已放弃');
+                    }
+                } catch (e) {
+                    console.warn('尝试建立 MutationObserver 时出错，已放弃', e);
+                }
+            }
             return;
+        }
+        // 找到后重置重试计数并断开观察器（如果存在）
+        scrollSyncAttempts = 0;
+        if (scrollSyncObserver) {
+            try { scrollSyncObserver.disconnect(); } catch (e) {}
+            scrollSyncObserver = null;
         }
         
         // 如果是相同的容器元素，说明已经设置过了
@@ -1161,6 +1428,8 @@
     // ==========================================
     async function refreshData() {
         clearError();
+        // 每次刷新时确认一次宿主主题（仅一次性检测，不进行持续观察）
+        try { detectSiyuanTheme(); } catch (e) { console.warn('刷新时主题检测失败:', e); }
 
         try {
             const calendarEl = document.getElementById('calendar');
@@ -1528,6 +1797,110 @@
         const errorEl = document.getElementById('gantt-error');
         if (errorEl) {
             errorEl.textContent = '';
+        }
+    }
+
+    // ==========================================
+    // 主题检测与应用（绑定到 SiYuan 的亮色/暗色模式）
+    // ==========================================
+    function applyTheme(theme) {
+        const isLight = theme === 'light';
+        try {
+            // 将主题类同时应用到 html、body 以及日历容器，确保 FullCalendar 的各子元素都能被覆盖样式
+            document.documentElement.classList.toggle('gantt-theme-light', isLight);
+            try { document.body.classList.toggle('gantt-theme-light', isLight); } catch (e) {}
+            try {
+                const calEl = document.getElementById('calendar');
+                if (calEl) calEl.classList.toggle('gantt-theme-light', isLight);
+            } catch (e) {}
+            console.log('应用甘特图主题:', theme);
+            // 尝试刷新 FullCalendar 布局以使样式生效
+            try { if (calendar && typeof calendar.updateSize === 'function') calendar.updateSize(); } catch (e) {}
+        } catch (e) {
+            console.warn('应用主题失败:', e);
+        }
+    }
+
+    // 查找最近可用于检测背景颜色的祖先元素（从 iframe 的宿主向上查找）
+    function findHostAncestor() {
+        try {
+            let el = window.frameElement || null;
+            if (!el) return null;
+            // 向上查找直到根节点，寻找带有非透明背景的元素
+            let p = el.parentElement;
+            while (p) {
+                const bg = getComputedStyle(p).backgroundColor;
+                if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') return p;
+                p = p.parentElement;
+            }
+            return el.parentElement || el;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function detectSiyuanTheme() {
+        try {
+            // 一次性检测：优先读取宿主配置（若同源可访问），仅应用当前值
+            const parentWin = (window.parent && window.parent !== window) ? window.parent : (window.top || window);
+            try {
+                if (parentWin && parentWin.siyuan && parentWin.siyuan.config && parentWin.siyuan.config.appearance) {
+                    const cfg = parentWin.siyuan.config.appearance;
+                    const mode = cfg.mode; // 0: light, 1: dark, 2: follow OS
+                    let theme = 'dark';
+                    if (mode === 0) theme = 'light';
+                    else if (mode === 1) theme = 'dark';
+                    else if (mode === 2) {
+                        const osDark = parentWin.matchMedia && parentWin.matchMedia('(prefers-color-scheme: dark)').matches;
+                        theme = osDark ? 'dark' : 'light';
+                    }
+                    console.log('detectSiyuanTheme: applied from parent.siyuan.config.appearance ->', theme);
+                    applyTheme(theme);
+                    return;
+                }
+            } catch (e) {
+                // 访问 parent.siyuan 可能跨域或不存在
+                console.warn('detectSiyuanTheme: cannot read parent.siyuan.config.appearance:', e);
+            }
+
+            // 如果同源，尝试读取父文档的根或 body 背景色（更可靠）
+            try {
+                const parentDoc = (parentWin && parentWin.document) ? parentWin.document : null;
+                if (parentDoc) {
+                    const computedBg = parentWin.getComputedStyle(parentDoc.documentElement).backgroundColor || parentWin.getComputedStyle(parentDoc.body).backgroundColor || '';
+                    if (computedBg) {
+                        const nums = computedBg.match(/\d+/g);
+                        if (nums && nums.length >= 3) {
+                            const r = parseInt(nums[0], 10), g = parseInt(nums[1], 10), b = parseInt(nums[2], 10);
+                            const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+                            const theme = luminance > 0.6 ? 'light' : 'dark';
+                            console.log('detectSiyuanTheme: applied from parent document background ->', theme);
+                            applyTheme(theme);
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('detectSiyuanTheme: cannot read parent document background:', e);
+            }
+
+            // 回退：读取宿主可见祖先元素的背景亮度并一次性应用
+            const host = findHostAncestor();
+            if (!host) return;
+            try {
+                const bg = getComputedStyle(host).backgroundColor || '';
+                const nums = bg.match(/\d+/g);
+                if (!nums || nums.length < 3) return;
+                const r = parseInt(nums[0], 10), g = parseInt(nums[1], 10), b = parseInt(nums[2], 10);
+                const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+                const theme = luminance > 0.6 ? 'light' : 'dark';
+                console.log('detectSiyuanTheme: applied from host ancestor background ->', theme);
+                applyTheme(theme);
+            } catch (e) {
+                console.warn('计算宿主背景色失败:', e);
+            }
+        } catch (e) {
+            console.warn('检测 SiYuan 主题失败:', e);
         }
     }
 
