@@ -649,47 +649,9 @@
     var widgetId = null;
     var customColorMap = {};  // 用户自定义颜色映射
 
-    // Reusable containers to reduce temporary allocations during refresh
-    const _reusableResources = [];
-    const _reusableEvents = [];
-
     // debug / profiling flags (turn off in production)
     const DEBUG = false; // set to true to enable verbose logs
     const DEBUG_PROFILING = false; // set to true to log timing information
-
-    // Lightweight profiling helpers
-    function profileStart(label) {
-        if (!DEBUG_PROFILING || typeof performance === 'undefined') return null;
-        return {label, t: performance.now(), mem: (performance && performance.memory) ? performance.memory.usedJSHeapSize : null};
-    }
-    function profileEnd(ctx) {
-        if (!ctx) return;
-        const t2 = performance.now();
-        const mem2 = (performance && performance.memory) ? performance.memory.usedJSHeapSize : null;
-        const timeMs = (t2 - ctx.t).toFixed(2);
-        const memDiff = (mem2 !== null && ctx.mem !== null) ? (mem2 - ctx.mem) : null;
-        console.info(`[PROFILE] ${ctx.label}: ${timeMs}ms` + (memDiff !== null ? `, memDiff=${(memDiff/1024).toFixed(2)}KB` : ""));
-    }
-
-    // Run multiple refreshes to gather timing/memory samples. Usage: from devtools run `runProfile({iterations:10, delay:200})`
-    async function runProfile({iterations = 5, delay = 200} = {}) {
-        if (!DEBUG_PROFILING) console.warn('runProfile: DEBUG_PROFILING is disabled; enable it for memory measurements.');
-        const times = [];
-        for (let i = 0; i < iterations; i++) {
-            const t0 = performance.now();
-            await refreshData();
-            const t1 = performance.now();
-            times.push(t1 - t0);
-            // small delay to allow GC/other work to settle
-            await new Promise(r => setTimeout(r, delay));
-        }
-        const sum = times.reduce((a, b) => a + b, 0);
-        const avg = (times.length > 0) ? (sum / times.length).toFixed(2) : '0';
-        console.info(`[PROFILE_RUN] iterations=${iterations}, avg=${avg}ms, times=[${times.map(t=>t.toFixed(2)).join(', ')}]`);
-        return {times, avg};
-    }
-    // expose for manual invocation
-    window.runProfile = runProfile;
 
     var availableStatuses = [];  // 可用的状态列表
     var databaseColorMap = {};  // 数据库中的颜色映射
@@ -1474,7 +1436,7 @@
         // 每次刷新时确认一次宿主主题（仅一次性检测，不进行持续观察）
         try { detectSiyuanTheme(); } catch (e) { if (DEBUG) console.warn('刷新时主题检测失败:', e); }
         // Profiling start
-        const _p_refresh = profileStart('refreshData');
+        if (DEBUG_PROFILING) { window._refreshPerfStart = performance.now(); }
 
         try {
             const calendarEl = document.getElementById('calendar');
@@ -1510,10 +1472,8 @@
             if (DEBUG) console.log('数据库数据:', result.data);
             if (DEBUG_PROFILING) console.log('refreshData - rows:', view.rows.length, 'cols:', view.columns.length);
 
-            _reusableResources.length = 0;
-            _reusableEvents.length = 0;
-            const resources = _reusableResources;
-            const events = _reusableEvents;
+            const resources = [];
+            const events = [];
 
             // 解析数据库结构
             const view = result.data.view;
@@ -1788,23 +1748,15 @@
                 }
             });
 
-            // 更新日历 - 批量渲染以降低重绘开销（如果支持）
-            if (calendar.batchRendering) {
-                calendar.batchRendering(() => {
-                    calendar.getResources().forEach(resource => resource.remove());
-                    calendar.getEvents().forEach(event => event.remove());
-                    resources.forEach(r => calendar.addResource(r));
-                    events.forEach(e => calendar.addEvent(e));
-                });
-            } else {
-                calendar.getResources().forEach(resource => resource.remove());
-                calendar.getEvents().forEach(event => event.remove());
-                resources.forEach(r => calendar.addResource(r));
-                events.forEach(e => calendar.addEvent(e));
-            }
+            // 更新日历
+            calendar.getResources().forEach(resource => resource.remove());
+            calendar.getEvents().forEach(event => event.remove());
+            
+            resources.forEach(r => calendar.addResource(r));
+            events.forEach(e => calendar.addEvent(e));
 
             if (DEBUG) console.log(`加载了 ${resources.length} 个项目`);
-            profileEnd(_p_refresh);
+            if (DEBUG_PROFILING) console.log('refreshData time:', performance.now() - (window._refreshPerfStart || performance.now()), 'ms');
 
         } catch (e) {
             console.error("获取数据异常:", e);
