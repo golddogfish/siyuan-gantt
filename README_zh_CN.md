@@ -80,9 +80,12 @@
 
 ## 更新日志
 
-### v1.3.2（进行中）
+### v1.3.2 (2025-12-18)
 
-- 🔧 **性能**：已创建 `v1.3.2` 分支；添加轻量级性能剖析助手与 `runProfile` 采样工具，用于收集刷新时耗时/内存样本。启用 `DEBUG_PROFILING=true` 后，可在浏览器控制台运行 `window.runProfile({iterations:10, delay:200})` 以采集数据。
+- 🔧 **性能**：添加轻量级性能剖析助手与 `runProfile` 采样工具；替换日历的批量 remove/add 为 `calendar.setOption('resources', ...)` 和 `calendar.setOption('events', ...)`，以利用 FullCalendar 内部 diff 算法，显著提升大量事件场景下的渲染性能。
+- 🔧 **内存**：取消每个事件的独立右键监听器，改为委托式处理并在 DOM 上设置 `data-event-id`（减少大量事件时的内存/GC 压力）。
+- 🧪 新增 `scripts/offline_profile.js` 与 `scripts/generate_large_json.js`，用于重现并基准测试大数据集（已使用 10k 行完成测试）。
+
 
 ### v1.3.1 (2025-12-18)
 
