@@ -657,6 +657,32 @@
     const DEBUG = false; // set to true to enable verbose logs
     const DEBUG_PROFILING = false; // set to true to log timing information
 
+    // Performance: suppress noisy console methods when not debugging to reduce allocation & I/O overhead
+    // Keep console.error/warn intact; allow re-enabling by setting DEBUG / DEBUG_PROFILING.
+    (function(){
+        try {
+            const _orig_log = console.log && console.log.bind ? console.log.bind(console) : function(){};
+            const _orig_debug = console.debug && console.debug.bind ? console.debug.bind(console) : _orig_log;
+            const _orig_info = console.info && console.info.bind ? console.info.bind(console) : _orig_log;
+
+            if (!DEBUG) {
+                console.log = function(){};
+                console.debug = function(){};
+            } else {
+                console.log = _orig_log;
+                console.debug = _orig_debug;
+            }
+
+            if (!DEBUG_PROFILING) {
+                console.info = function(){};
+            } else {
+                console.info = _orig_info;
+            }
+        } catch (e) {
+            // noop - some environments may lock console
+        }
+    })();
+
     // Lightweight profiling helpers
     function profileStart(label) {
         if (!DEBUG_PROFILING || typeof performance === 'undefined') return null;
@@ -1264,10 +1290,8 @@
                     info.el.style.color = info.event.extendedProps.textColor;
                 }
                 
-                // 添加右键菜单事件
-                info.el.addEventListener('contextmenu', function(e) {
-                    showContextMenu(e, info.event);
-                });
+                // 绑定事件ID到 DOM 以便委托式处理右键菜单（避免为每个事件创建闭包）
+                info.el.dataset.eventId = info.event.id;
             },
             
             // 事件拖动结束回调
@@ -1338,6 +1362,24 @@
         setTimeout(function() {
             setupScrollSync();
         }, 100);
+
+        // 全局委托右键菜单：在 #calendar 上只绑定一次监听器，避免为每个事件创建闭包
+        (function(){
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+            if (calendarEl._gantt_contextmenu_attached) return;
+            calendarEl.addEventListener('contextmenu', function(e) {
+                const eventEl = e.target && e.target.closest ? e.target.closest('.fc-event') : null;
+                if (!eventEl) return;
+                e.preventDefault();
+                const eventId = eventEl.dataset && eventEl.dataset.eventId;
+                const fcEvent = eventId ? calendar.getEventById(eventId) : null;
+                if (fcEvent) {
+                    showContextMenu(e, fcEvent);
+                }
+            }, { passive: false });
+            calendarEl._gantt_contextmenu_attached = true;
+        })();
     }
     
     // 滚动同步相关变量（放在函数外部避免重复创建）
@@ -1788,19 +1830,30 @@
                 }
             });
 
-            // 更新日历 - 批量渲染以降低重绘开销（如果支持）
+            // 高效更新：使用 setOption 替换 resources 与 events，交由 FullCalendar 内部 diff 算法高效处理（先 resources 再 events）
             if (calendar.batchRendering) {
                 calendar.batchRendering(() => {
+                    try {
+                        calendar.setOption('resources', resources);
+                        calendar.setOption('events', events);
+                    } catch (err) {
+                        // 回退到原始方法以保证兼容性
+                        calendar.getResources().forEach(resource => resource.remove());
+                        calendar.getEvents().forEach(event => event.remove());
+                        resources.forEach(r => calendar.addResource(r));
+                        events.forEach(e => calendar.addEvent(e));
+                    }
+                });
+            } else {
+                try {
+                    calendar.setOption('resources', resources);
+                    calendar.setOption('events', events);
+                } catch (err) {
                     calendar.getResources().forEach(resource => resource.remove());
                     calendar.getEvents().forEach(event => event.remove());
                     resources.forEach(r => calendar.addResource(r));
                     events.forEach(e => calendar.addEvent(e));
-                });
-            } else {
-                calendar.getResources().forEach(resource => resource.remove());
-                calendar.getEvents().forEach(event => event.remove());
-                resources.forEach(r => calendar.addResource(r));
-                events.forEach(e => calendar.addEvent(e));
+                }
             }
 
             if (DEBUG) console.log(`加载了 ${resources.length} 个项目`);
