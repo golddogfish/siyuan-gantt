@@ -14,3 +14,4 @@ Thumbs.db
 # Node.js (如果以后添加构建工具)
 node_modules/
 package-lock.json
+data/
