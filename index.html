@@ -653,13 +653,47 @@
     const _reusableResources = [];
     const _reusableEvents = [];
 
-    // debug / profiling flags (turn off in production)
-    const DEBUG = false; // set to true to enable verbose logs
-    const DEBUG_PROFILING = false; // set to true to log timing information
+    // debug / profiling flags (disabled in production)
+    const DEBUG = false; // keep false to disable verbose logs in production
+    const DEBUG_PROFILING = false; // keep false to disable profiling in production
+    // Ensure debug/profiling cannot be accidentally enabled via window globals
+    try { if (typeof window !== 'undefined') { window.DEBUG = false; window.DEBUG_PROFILING = false; } } catch (e) {}
+
+    // Production performance safety flags
+    // - Set ENABLE_RAF_HEAVY = true **only in development** when you need precise frame-synced behavior
+    // - In production we prefer setTimeout/requestIdleCallback fallbacks to avoid long 'requestAnimationFrame' handlers shown in DevTools
+    const ENABLE_RAF_HEAVY = false;
+
+    // Performance: suppress noisy console methods when not debugging to reduce allocation & I/O overhead
+    // Keep console.error/warn intact; allow re-enabling by setting DEBUG / DEBUG_PROFILING.
+    (function(){
+        try {
+            const _orig_log = console.log && console.log.bind ? console.log.bind(console) : function(){};
+            const _orig_debug = console.debug && console.debug.bind ? console.debug.bind(console) : _orig_log;
+            const _orig_info = console.info && console.info.bind ? console.info.bind(console) : _orig_log;
+
+            if (!DEBUG) {
+                console.log = function(){};
+                console.debug = function(){};
+            } else {
+                console.log = _orig_log;
+                console.debug = _orig_debug;
+            }
+
+            if (!DEBUG_PROFILING) {
+                console.info = function(){};
+            } else {
+                console.info = _orig_info;
+            }
+        } catch (e) {
+            // noop - some environments may lock console
+        }
+    })();
 
     // Lightweight profiling helpers
     function profileStart(label) {
-        if (!DEBUG_PROFILING || typeof performance === 'undefined') return null;
+        const profilingEnabled = (typeof DEBUG_PROFILING !== 'undefined' && DEBUG_PROFILING) || (typeof window !== 'undefined' && window.DEBUG_PROFILING);
+        if (!profilingEnabled || typeof performance === 'undefined') return null;
         return {label, t: performance.now(), mem: (performance && performance.memory) ? performance.memory.usedJSHeapSize : null};
     }
     function profileEnd(ctx) {
@@ -673,22 +707,31 @@
 
     // Run multiple refreshes to gather timing/memory samples. Usage: from devtools run `runProfile({iterations:10, delay:200})`
     async function runProfile({iterations = 5, delay = 200} = {}) {
-        if (!DEBUG_PROFILING) console.warn('runProfile: DEBUG_PROFILING is disabled; enable it for memory measurements.');
+        const profilingEnabled = (typeof DEBUG_PROFILING !== 'undefined' && DEBUG_PROFILING) || (typeof window !== 'undefined' && window.DEBUG_PROFILING);
+        if (!profilingEnabled) {
+            console.warn('runProfile: DEBUG_PROFILING is disabled; profiling is disabled.');
+            return { error: 'DEBUG_PROFILING disabled' };
+        }
         const times = [];
+        const mems = [];
         for (let i = 0; i < iterations; i++) {
             const t0 = performance.now();
             await refreshData();
             const t1 = performance.now();
             times.push(t1 - t0);
+            mems.push(performance && performance.memory ? performance.memory.usedJSHeapSize : null);
             // small delay to allow GC/other work to settle
             await new Promise(r => setTimeout(r, delay));
         }
         const sum = times.reduce((a, b) => a + b, 0);
         const avg = (times.length > 0) ? (sum / times.length).toFixed(2) : '0';
         console.info(`[PROFILE_RUN] iterations=${iterations}, avg=${avg}ms, times=[${times.map(t=>t.toFixed(2)).join(', ')}]`);
-        return {times, avg};
+        if (mems[0] !== null) {
+            console.info(`[PROFILE_RUN] heapStart=${Math.round(mems[0]/1024)}KB heapEnd=${Math.round(mems[mems.length-1]/1024)}KB diff=${Math.round((mems[mems.length-1]-mems[0])/1024)}KB`);
+        }
+        return {times, mems, avg};
     }
-    // expose for manual invocation
+    // expose for manual invocation (returns error when disabled)
     window.runProfile = runProfile;
 
     var availableStatuses = [];  // 可用的状态列表
@@ -706,7 +749,7 @@
     function getWidgetId() {
         try {
             widgetId = window.frameElement?.parentElement?.parentElement?.getAttribute("data-node-id");
-            console.log('挂件块ID:', widgetId);
+            if (DEBUG) console.log('挂件块ID:', widgetId);
             loadConfig();
         } catch (error) {
             console.error('获取挂件ID失败:', error);
@@ -737,12 +780,12 @@
                 })
             });
             const result = await response.json();
-            console.log('更新日期响应:', result);
+            if (DEBUG) console.log('更新日期响应:', result);
             if (result.code !== 0) {
                 console.error('更新日期失败:', result.msg);
                 return false;
             }
-            console.log('日期更新成功');
+            if (DEBUG) console.log('日期更新成功');
             return true;
         } catch (e) {
             console.error('更新日期异常:', e);
@@ -760,7 +803,7 @@
                 return false;
             }
 
-            console.log('更新状态 - avId:', avId, 'keyID:', statusColId, 'itemID:', rowId, 'status:', statusName, 'option:', option);
+            if (DEBUG) console.log('更新状态 - avId:', avId, 'keyID:', statusColId, 'itemID:', rowId, 'status:', statusName, 'option:', option);
             const response = await fetch('/api/av/setAttributeViewBlockAttr', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -777,12 +820,12 @@
                 })
             });
             const result = await response.json();
-            console.log('更新状态响应:', result);
+            if (DEBUG) console.log('更新状态响应:', result);
             if (result.code !== 0) {
                 console.error('更新状态失败:', result.msg);
                 return false;
             }
-            console.log('状态更新成功:', statusName);
+            if (DEBUG) console.log('状态更新成功:', statusName);
             return true;
         } catch (e) {
             console.error('更新状态异常:', e);
@@ -797,7 +840,7 @@
         event.preventDefault();
         currentContextEvent = fcEvent;
 
-        console.log('显示右键菜单 - 事件:', fcEvent.title, 'availableStatuses:', availableStatuses);
+        if (DEBUG) console.log('显示右键菜单 - 事件:', fcEvent.title, 'availableStatuses:', availableStatuses);
 
         const menu = document.getElementById('contextMenu');
         const menuItems = document.getElementById('contextMenuItems');
@@ -869,14 +912,14 @@
         // 从extendedProps获取rowId，或从事件ID中提取（兼容旧方式）
         const rowId = currentContextEvent.extendedProps?.rowId || currentContextEvent.id.replace('_event', '');
         const eventId = currentContextEvent.id;
-        console.log('处理状态更改 - rowId:', rowId, 'eventId:', eventId, 'newStatus:', newStatus);
+        if (DEBUG) console.log('处理状态更改 - rowId:', rowId, 'eventId:', eventId, 'newStatus:', newStatus);
         
         const success = await updateCellStatus(rowId, newStatus);
         
         if (success) {
             // 更新本地甘特图显示
             const color = customColorMap[newStatus] || databaseColorMap[newStatus] || '#3788d8';
-            console.log('更新甘特图显示 - newStatus:', newStatus, 'color:', color);
+            if (DEBUG) console.log('更新甘特图显示 - newStatus:', newStatus, 'color:', color);
             
             // 通过 calendar API 获取事件并更新
             const calendarEvent = calendar.getEventById(eventId);
@@ -901,7 +944,7 @@
                 // 删除旧事件，添加新事件
                 calendarEvent.remove();
                 calendar.addEvent(eventData);
-                console.log('事件更新成功（重新创建）');
+                if (DEBUG) console.log('事件更新成功（重新创建）');
             } else {
                 console.warn('未找到事件:', eventId);
                 // 备用方案：刷新数据
@@ -942,11 +985,11 @@
                             body: JSON.stringify({ path: `/data/widgets/siyuan-gantt/${file.name}` })
                         });
                     }
-                    console.log(`已删除 ${configFiles.length} 个旧配置文件`);
+                    if (DEBUG) console.log(`已删除 ${configFiles.length} 个旧配置文件`);
                 }
             }
         } catch (error) {
-            console.log('清理旧配置文件时出错:', error);
+            console.error('清理旧配置文件时出错:', error);
         }
         
         // 保存新配置
@@ -966,7 +1009,7 @@
         fetch("http://127.0.0.1:6806/api/file/putFile", { 
             method: "POST", 
             body: formData 
-        }).then(() => console.log('配置已保存'));
+        }).then(() => { if (DEBUG) console.log('配置已保存'); });
     }
 
     // 加载配置
@@ -1091,7 +1134,7 @@
             customColorMap[status] = input.value;
         });
         
-        console.log('保存配置 - 数据库ID:', blockId, '屏蔽状态:', ignoreStatuses, '自定义颜色:', customColorMap);
+        if (DEBUG) console.log('保存配置 - 数据库ID:', blockId, '屏蔽状态:', ignoreStatuses, '自定义颜色:', customColorMap);
         saveConfig();
         closeColorConfig();
         
@@ -1162,7 +1205,7 @@
         }
         lastRefreshTime = now;
         
-        console.log('检测到数据库变化，自动刷新甘特图');
+        if (DEBUG) console.log('检测到数据库变化，自动刷新甘特图');
         refreshData();
     }
 
@@ -1192,7 +1235,7 @@
                     click: function() {
                         // 手动刷新数据
                         try {
-                            console.log('手动刷新：用户触发刷新按钮');
+                            if (DEBUG) console.log('手动刷新：用户触发刷新按钮');
                             refreshData();
                         } catch (e) {
                             console.error('刷新失败', e);
@@ -1213,14 +1256,25 @@
             // 视图渲染完成后将今天滚动到屏幕中央
             datesSet: function(info) {
                 // 使用 requestAnimationFrame 确保在渲染后立即执行，减少卡顿
-                requestAnimationFrame(function() {
+                if (ENABLE_RAF_HEAVY) {
                     requestAnimationFrame(function() {
-                        scrollToTodayCenter();
-                        // 视图切换后重新设置滚动同步
-                        setupScrollSync();
-                        // 仅使用 headerToolbar 中配置的 refreshButton
+                        requestAnimationFrame(function() {
+                            scrollToTodayCenter();
+                            // 视图切换后重新设置滚动同步
+                            setupScrollSync();
+                            // 仅使用 headerToolbar 中配置的 refreshButton
+                        });
                     });
-                });
+                } else {
+                    // 生产环境：避免在 rAF 中执行大量工作以减少 DevTools 的 "requestAnimationFrame handler took" 警告
+                    // 使用 setTimeout 或 requestIdleCallback 做回退处理
+                    const cb = () => { scrollToTodayCenter(); setupScrollSync(); };
+                    if (typeof requestIdleCallback !== 'undefined') {
+                        requestIdleCallback(cb, {timeout: 200});
+                    } else {
+                        setTimeout(cb, 200);
+                    }
+                }
             },
             
             views: {
@@ -1264,10 +1318,8 @@
                     info.el.style.color = info.event.extendedProps.textColor;
                 }
                 
-                // 添加右键菜单事件
-                info.el.addEventListener('contextmenu', function(e) {
-                    showContextMenu(e, info.event);
-                });
+                // 绑定事件ID到 DOM 以便委托式处理右键菜单（避免为每个事件创建闭包）
+                info.el.dataset.eventId = info.event.id;
             },
             
             // 事件拖动结束回调
@@ -1338,6 +1390,24 @@
         setTimeout(function() {
             setupScrollSync();
         }, 100);
+
+        // 全局委托右键菜单：在 #calendar 上只绑定一次监听器，避免为每个事件创建闭包
+        (function(){
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+            if (calendarEl._gantt_contextmenu_attached) return;
+            calendarEl.addEventListener('contextmenu', function(e) {
+                const eventEl = e.target && e.target.closest ? e.target.closest('.fc-event') : null;
+                if (!eventEl) return;
+                e.preventDefault();
+                const eventId = eventEl.dataset && eventEl.dataset.eventId;
+                const fcEvent = eventId ? calendar.getEventById(eventId) : null;
+                if (fcEvent) {
+                    showContextMenu(e, fcEvent);
+                }
+            }, { passive: false });
+            calendarEl._gantt_contextmenu_attached = true;
+        })();
     }
     
     // 滚动同步相关变量（放在函数外部避免重复创建）
@@ -1368,7 +1438,7 @@
             scrollSyncAttempts = (scrollSyncAttempts || 0) + 1;
             // 如果短时间内重试次数未超过3次，继续使用短延迟重试（快速场景）
             if (scrollSyncAttempts <= 3) {
-                console.log('滚动容器未找到，稍后重试（尝试次数', scrollSyncAttempts, ')');
+                if (DEBUG) console.log('滚动容器未找到，稍后重试（尝试次数', scrollSyncAttempts, ')');
                 setTimeout(setupScrollSync, 200);
                 return;
             }
@@ -1387,7 +1457,7 @@
                             }
                         });
                         scrollSyncObserver.observe(calendarEl, { childList: true, subtree: true });
-                        console.log('滚动容器未找到，已启动 MutationObserver 等待 DOM 更新');
+                        if (DEBUG) console.log('滚动容器未找到，已启动 MutationObserver 等待 DOM 更新');
                     } else {
                         console.warn('滚动容器未找到，也无法使用 MutationObserver，已放弃');
                     }
@@ -1423,10 +1493,20 @@
             isSyncing = true;
             
             // 使用 requestAnimationFrame 确保在下一帧同步，避免抖动
-            requestAnimationFrame(function() {
-                target.scrollLeft = source.scrollLeft;
-                isSyncing = false;
-            });
+            if (ENABLE_RAF_HEAVY) {
+                requestAnimationFrame(function() {
+                    target.scrollLeft = source.scrollLeft;
+                    isSyncing = false;
+                });
+            } else {
+                // 在生产环境，使用更温和的方式更新 scrollLeft，减少 rAF 回调开销引发的 DevTools 警告
+                const doSync = () => { target.scrollLeft = source.scrollLeft; isSyncing = false; };
+                if (typeof requestIdleCallback !== 'undefined') {
+                    requestIdleCallback(doSync, {timeout: 50});
+                } else {
+                    setTimeout(doSync, 16);
+                }
+            }
         }
         
         // 滚动结束处理
@@ -1461,7 +1541,7 @@
         headerScroller.addEventListener('scroll', headerScrollHandler, { passive: true });
         bodyScroller.addEventListener('scroll', bodyScrollHandler, { passive: true });
         
-        console.log('滚动同步已设置');
+        if (DEBUG) console.log('滚动同步已设置');
     }
 
         
@@ -1510,11 +1590,6 @@
             if (DEBUG) console.log('数据库数据:', result.data);
             if (DEBUG_PROFILING) console.log('refreshData - rows:', view.rows.length, 'cols:', view.columns.length);
 
-            _reusableResources.length = 0;
-            _reusableEvents.length = 0;
-            const resources = _reusableResources;
-            const events = _reusableEvents;
-
             // 解析数据库结构
             const view = result.data.view;
             if (!view || !view.columns || !view.rows) {
@@ -1522,13 +1597,28 @@
                 return;
             }
 
+            // 预分配并重用容器以减少临时对象与分配（最大化性能）
+            const maxPossible = view.rows.length || 0;
+            // 确保池的容量
+            for (let i = _reusableResources.length; i < maxPossible; i++) {
+                _reusableResources.push({ id: '', title: '' });
+            }
+            for (let i = _reusableEvents.length; i < maxPossible; i++) {
+                _reusableEvents.push({ id: '', resourceId: '', title: '', start: '', end: '', allDay: true, backgroundColor: '', borderColor: '', color: '', extendedProps: { textColor: '#ffffff', rowId: '' } });
+            }
+            let resourceCount = 0;
+            let eventCount = 0;
+            const resources = _reusableResources;
+            const events = _reusableEvents;
+
+
             // 创建列映射
             const columnMap = {};
             view.columns.forEach(col => {
                 columnMap[col.id] = col;
             });
 
-            console.log('列信息:', view.columns.map(c => c.name));
+            if (DEBUG) console.log('列信息:', view.columns.map(c => c.name));
 
             // 查找关键列
             const findColumn = (names) => {
@@ -1652,7 +1742,7 @@
                 return;
             }
 
-            console.log(`找到列: 名称=${nameCol?.name}, 状态=${statusCol?.name}, 开始=${startCol?.name}, 截止=${endCol?.name}`);
+            if (DEBUG) console.log(`找到列: 名称=${nameCol?.name}, 状态=${statusCol?.name}, 开始=${startCol?.name}, 截止=${endCol?.name}`);
 
             // 处理每一行
             view.rows.forEach((row, index) => {
@@ -1670,18 +1760,18 @@
                     // 项目名称
                     const nameCell = getCellValue(nameCol.id);
                     let projectName = nameCell?.block?.content || nameCell?.text?.content || `项目${index + 1}`;
-                    console.log(`原始项目名称: "${projectName}"`);
+                    if (DEBUG) console.log(`原始项目名称: "${projectName}"`);
                     // 删除所有标签（如 #1#, #数据库名# 等，匹配 #任意内容# 格式），使用全局替换
                     projectName = projectName.replace(/#[^#]+#/g, '').trim();
-                    console.log(`处理后项目名称: "${projectName}"`);
+                    if (DEBUG) console.log(`处理后项目名称: "${projectName}"`);
                     const blockId = nameCell?.block?.id || `temp_${index}`;
 
                     // 状态 - 处理单选类型
                     const statusCell = getCellValue(statusCol?.id);
-                    console.log(`行 ${index} 状态单元格原始数据:`, statusCell);
+                    if (DEBUG) console.log(`行 ${index} 状态单元格原始数据:`, statusCell);
                     
                     let status = '未知';
-                    let statusColor = '#3788d8';
+                    let statusColor = null; // null 表示使用 FullCalendar 默认颜色
                     
                     if (statusCell) {
                         // 检查所有可能的状态字段
@@ -1692,7 +1782,7 @@
                             status = statusCell.text.content;
                             console.log(`从 text 获取状态: "${status}"`);
                         } else {
-                            console.warn(`状态单元格格式未知:`, statusCell);
+                            // 状态单元格格式未知：保持默认 '未知'（生产环境不输出）
                         }
                         
                         // 优先从数据库列配置中获取颜色
@@ -1700,7 +1790,7 @@
                             statusColor = statusColorMap[status];
                             console.log(`从颜色映射获取 "${status}" 颜色: ${statusColor}`);
                         } else {
-                            console.warn(`颜色映射中未找到状态 "${status}"，可用状态:`, Object.keys(statusColorMap));
+                            // 未在颜色映射中找到状态（生产环境不输出），将使用默认 FullCalendar 样式和 '未知' 文本作为回退
                             
                             // 尝试使用单元格中的颜色
                             if (statusCell.mSelect && statusCell.mSelect[0] && statusCell.mSelect[0].color) {
@@ -1720,7 +1810,7 @@
                                         statusColor = '#' + cellColor.padStart(6, '0');
                                     }
                                 } else {
-                                    statusColor = '#3788d8';
+                                    statusColor = null;
                                 }
                                 console.log(`从单元格获取最终颜色: ${statusColor}`);
                             }
@@ -1729,7 +1819,7 @@
                         console.warn(`行 ${index} 未找到状态单元格`);
                     }
 
-                    console.log(`行 ${index} 最终结果 - 项目: ${projectName}, 状态: "${status}", 颜色: ${statusColor}`);
+                    if (DEBUG) console.log(`行 ${index} 最终结果 - 项目: ${projectName}, 状态: "${status}", 颜色: ${statusColor}`);
 
                     // 过滤屏蔽状态
                     if (ignoreStatuses.includes(status)) {
@@ -1745,58 +1835,110 @@
 
                     // 没有日期的项目不显示
                     if (!startDate && !endDate) {
-                        console.log(`跳过无日期项目: ${projectName}`);
+                        if (DEBUG) console.log(`跳过无日期项目: ${projectName}`);
                         return;
                     }
 
                     if (DEBUG) console.log(`添加项目: ${projectName}, 状态=${status}, 颜色=${statusColor}, 开始=${startDate}, 截止=${endDate}, rowId=${rowId}`);
 
-                    // 构建资源 - 使用rowId作为唯一标识符（用于API调用）
-                    resources.push({
-                        id: rowId,
-                        title: projectName
-                        // 注意：eventColor 不是资源的属性，应该在 event 上设置
-                    });
+                    // 构建资源 - 使用重用对象并就地赋值以减少分配
+                    const r = resources[resourceCount];
+                    r.id = rowId;
+                    r.title = projectName;
+                    resourceCount++;
 
-                    // 构建事件 - 使用rowId作为事件的关联ID
+                    // 构建事件 - 使用重用对象并就地赋值
                     const eventStart = startDate || endDate;
                     // 结束日期+1天，使甘特图覆盖完整的最后一天（FullCalendar的end是不包含的）
                     const eventEndDate = endDate || startDate;
                     const eventEndPlusOne = new Date(eventEndDate);
                     eventEndPlusOne.setDate(eventEndPlusOne.getDate() + 1);
                     
-                    const eventObj = {
-                        id: rowId + "_event",
-                        resourceId: rowId,
-                        title: status,
-                        start: formatDate(eventStart),
-                        end: formatDate(eventEndPlusOne),
-                        allDay: true,  // 全天事件，不显示时间
-                        backgroundColor: statusColor,
-                        borderColor: statusColor,
-                        color: statusColor,  // 添加 color 属性
-                        extendedProps: {
-                            textColor: '#ffffff',
-                            rowId: rowId  // 保存rowId供API调用使用
-                        }
-                    };
-                    
-                    if (DEBUG) console.log(`创建事件:`, eventObj);
-                    events.push(eventObj);
+                    const e = events[eventCount];
+                    e.id = rowId + "_event";
+                    e.resourceId = rowId;
+                    e.title = status;
+                    e.start = formatDate(eventStart);
+                    e.end = formatDate(eventEndPlusOne);
+                    e._startTs = eventStart.getTime();
+                    e._endTs = eventEndPlusOne.getTime();
+                    e.allDay = true;
+                    // 仅在有明确颜色时设置颜色属性；否则让 FullCalendar 使用默认样式
+                    if (statusColor) {
+                        e.backgroundColor = statusColor;
+                        e.borderColor = statusColor;
+                        e.color = statusColor;
+                        e.extendedProps = e.extendedProps || {};
+                        e.extendedProps.textColor = '#ffffff';
+                    } else {
+                        // 删除任何可能遗留的颜色属性以确保使用默认样式
+                        delete e.backgroundColor;
+                        delete e.borderColor;
+                        delete e.color;
+                        e.extendedProps = e.extendedProps || {};
+                        e.extendedProps.textColor = undefined;
+                    }
+                    e.extendedProps.rowId = rowId;
+                    eventCount++;
                 } catch (rowError) {
                     console.error(`处理行 ${index} 失败:`, rowError);
                 }
             });
 
-            // 更新日历 - 批量渲染以降低重绘开销（如果支持）
-            if (calendar.batchRendering) {
-                calendar.batchRendering(() => {
-                    calendar.getResources().forEach(resource => resource.remove());
-                    calendar.getEvents().forEach(event => event.remove());
-                    resources.forEach(r => calendar.addResource(r));
-                    events.forEach(e => calendar.addEvent(e));
+            // 将资源与事件的长度调整为实际使用的数量
+            resources.length = resourceCount;
+            events.length = eventCount;
+
+            // 将资源/事件保存为全局池，并使用惰性加载（按视图范围过滤）以减少 DOM 渲染压力
+            window._fullEventPool = events.slice(0, eventCount);
+            window._fullResourcePool = resources.slice(0, resourceCount);
+
+            try {
+                // 移除旧的事件源
+                calendar.getEventSources().forEach(s => s.remove());
+
+                // 添加按需事件源（FullCalendar 将在视图/日期范围变化时调用）
+                calendar.addEventSource(function(fetchInfo, successCallback, failureCallback) {
+                    try {
+                        const sTs = fetchInfo.start.getTime();
+                        const eTs = fetchInfo.end.getTime();
+                        const out = [];
+                        const pool = window._fullEventPool;
+                        for (let i = 0; i < pool.length; i++) {
+                            const ev = pool[i];
+                            // use numeric timestamps to avoid Date allocation
+                            if (ev._endTs > sTs && ev._startTs < eTs) out.push(ev);
+                        }
+                        successCallback(out);
+                    } catch (err) {
+                        if (failureCallback) failureCallback(err);
+                    }
                 });
-            } else {
+
+                // 设置资源为函数（按视图时间窗口过滤，仅返回当前时间窗口内有事件的资源）
+                calendar.setOption('resources', function(fetchInfo, successCallback) {
+                    try {
+                        const sTs = fetchInfo.start.getTime();
+                        const eTs = fetchInfo.end.getTime();
+                        const rids = new Set();
+                        const pool = window._fullEventPool;
+                        for (let i = 0; i < pool.length; i++) {
+                            const ev = pool[i];
+                            if (ev._endTs > sTs && ev._startTs < eTs) rids.add(ev.resourceId);
+                        }
+                        const res = window._fullResourcePool.filter(r => rids.has(r.id));
+                        successCallback(res);
+                    } catch (err) {
+                        successCallback([]);
+                    }
+                });
+
+                // 触发首轮加载
+                calendar.refetchEvents();
+                // 强制资源刷新（如支持）
+                if (typeof calendar.refetchResources === 'function') calendar.refetchResources();
+            } catch (err) {
+                // 回退到直接替换（兼容性）
                 calendar.getResources().forEach(resource => resource.remove());
                 calendar.getEvents().forEach(event => event.remove());
                 resources.forEach(r => calendar.addResource(r));
@@ -1870,7 +2012,7 @@
                 const calEl = document.getElementById('calendar');
                 if (calEl) calEl.classList.toggle('gantt-theme-light', isLight);
             } catch (e) {}
-            console.log('应用甘特图主题:', theme);
+            if (DEBUG) console.log('应用甘特图主题:', theme);
             // 尝试刷新 FullCalendar 布局以使样式生效
             try { if (calendar && typeof calendar.updateSize === 'function') calendar.updateSize(); } catch (e) {}
         } catch (e) {
@@ -1911,7 +2053,7 @@
                         const osDark = parentWin.matchMedia && parentWin.matchMedia('(prefers-color-scheme: dark)').matches;
                         theme = osDark ? 'dark' : 'light';
                     }
-                    console.log('detectSiyuanTheme: applied from parent.siyuan.config.appearance ->', theme);
+                    if (DEBUG) console.log('detectSiyuanTheme: applied from parent.siyuan.config.appearance ->', theme);
                     applyTheme(theme);
                     return;
                 }
@@ -1931,7 +2073,7 @@
                             const r = parseInt(nums[0], 10), g = parseInt(nums[1], 10), b = parseInt(nums[2], 10);
                             const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
                             const theme = luminance > 0.6 ? 'light' : 'dark';
-                            console.log('detectSiyuanTheme: applied from parent document background ->', theme);
+                            if (DEBUG) console.log('detectSiyuanTheme: applied from parent document background ->', theme);
                             applyTheme(theme);
                             return;
                         }
@@ -1951,7 +2093,7 @@
                 const r = parseInt(nums[0], 10), g = parseInt(nums[1], 10), b = parseInt(nums[2], 10);
                 const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
                 const theme = luminance > 0.6 ? 'light' : 'dark';
-                console.log('detectSiyuanTheme: applied from host ancestor background ->', theme);
+                if (DEBUG) console.log('detectSiyuanTheme: applied from host ancestor background ->', theme);
                 applyTheme(theme);
             } catch (e) {
                 console.warn('计算宿主背景色失败:', e);

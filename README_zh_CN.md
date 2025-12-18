@@ -80,9 +80,17 @@
 
 ## 更新日志
 
+### v1.3.3 (2025-12-18)
+
+- 🔒 **使用/开发模式分离**：默认在生产环境禁用 `DEBUG` 与 `DEBUG_PROFILING`，将调试日志与性能剖析工具与运行时功能分离，防止日志噪声和调试采样影响正常运行性能。
+- ⚡ **性能**：减少无谓的 `console.log`（仅在 `DEBUG===true` 时输出），复用事件/资源对象，按视窗懒加载事件/资源，添加数字时间戳用于快速范围判断，整体降低短时分配与 GC 压力。
+- 🔧 **采样工具说明**：`runProfile`、`scripts/offline_profile.js` 与离线生成的测试数据仍保留用于开发环境性能采样，但**默认在生产模式下不运行**；如需在本地开发启用，请在 DevTools 中设置 `window.DEBUG_PROFILING = true` 并手动运行 `window.runProfile({iterations:10, delay:200})`。
+- ✅ **其他改进**：移除每事件独立的右键监听（改为委托），减少内存占用，并优化日志以降低开销。
+- ⚠️ **生产性能安全**：在生产中关闭了某些基于 rAF 的即时操作（改用 setTimeout/requestIdleCallback 回退），以避免浏览器控制台出现“Forced reflow / requestAnimationFrame handler took …” 类的 DevTools 性能警告。
+
 ### v1.3.2 (2025-12-18)
 
-- 🔧 **性能**：添加轻量级性能剖析助手与 `runProfile` 采样工具；替换日历的批量 remove/add 为 `calendar.setOption('resources', ...)` 和 `calendar.setOption('events', ...)`，以利用 FullCalendar 内部 diff 算法，显著提升大量事件场景下的渲染性能。
+- 🔧 **性能**：添加轻量级性能剖析助手与 `runProfile` 采样工具（默认处于禁用状态，需在开发环境中将 `DEBUG_PROFILING` 设为 `true` 并通过 devtools 手动启用进行采样）；替换日历的批量 remove/add 为 `calendar.setOption('resources', ...)` 和 `calendar.setOption('events', ...)`，以利用 FullCalendar 内部 diff 算法，显著提升大量事件场景下的渲染性能。
 - 🔧 **内存**：取消每个事件的独立右键监听器，改为委托式处理并在 DOM 上设置 `data-event-id`（减少大量事件时的内存/GC 压力）。
 - 🧪 新增 `scripts/offline_profile.js` 与 `scripts/generate_large_json.js`，用于重现并基准测试大数据集（已使用 10k 行完成测试）。
 
