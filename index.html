@@ -659,6 +659,11 @@
     // Ensure debug/profiling cannot be accidentally enabled via window globals
     try { if (typeof window !== 'undefined') { window.DEBUG = false; window.DEBUG_PROFILING = false; } } catch (e) {}
 
+    // Production performance safety flags
+    // - Set ENABLE_RAF_HEAVY = true **only in development** when you need precise frame-synced behavior
+    // - In production we prefer setTimeout/requestIdleCallback fallbacks to avoid long 'requestAnimationFrame' handlers shown in DevTools
+    const ENABLE_RAF_HEAVY = false;
+
     // Performance: suppress noisy console methods when not debugging to reduce allocation & I/O overhead
     // Keep console.error/warn intact; allow re-enabling by setting DEBUG / DEBUG_PROFILING.
     (function(){
@@ -1251,14 +1256,25 @@
             // 视图渲染完成后将今天滚动到屏幕中央
             datesSet: function(info) {
                 // 使用 requestAnimationFrame 确保在渲染后立即执行，减少卡顿
-                requestAnimationFrame(function() {
+                if (ENABLE_RAF_HEAVY) {
                     requestAnimationFrame(function() {
-                        scrollToTodayCenter();
-                        // 视图切换后重新设置滚动同步
-                        setupScrollSync();
-                        // 仅使用 headerToolbar 中配置的 refreshButton
+                        requestAnimationFrame(function() {
+                            scrollToTodayCenter();
+                            // 视图切换后重新设置滚动同步
+                            setupScrollSync();
+                            // 仅使用 headerToolbar 中配置的 refreshButton
+                        });
                     });
-                });
+                } else {
+                    // 生产环境：避免在 rAF 中执行大量工作以减少 DevTools 的 "requestAnimationFrame handler took" 警告
+                    // 使用 setTimeout 或 requestIdleCallback 做回退处理
+                    const cb = () => { scrollToTodayCenter(); setupScrollSync(); };
+                    if (typeof requestIdleCallback !== 'undefined') {
+                        requestIdleCallback(cb, {timeout: 200});
+                    } else {
+                        setTimeout(cb, 200);
+                    }
+                }
             },
             
             views: {
@@ -1477,10 +1493,20 @@
             isSyncing = true;
             
             // 使用 requestAnimationFrame 确保在下一帧同步，避免抖动
-            requestAnimationFrame(function() {
-                target.scrollLeft = source.scrollLeft;
-                isSyncing = false;
-            });
+            if (ENABLE_RAF_HEAVY) {
+                requestAnimationFrame(function() {
+                    target.scrollLeft = source.scrollLeft;
+                    isSyncing = false;
+                });
+            } else {
+                // 在生产环境，使用更温和的方式更新 scrollLeft，减少 rAF 回调开销引发的 DevTools 警告
+                const doSync = () => { target.scrollLeft = source.scrollLeft; isSyncing = false; };
+                if (typeof requestIdleCallback !== 'undefined') {
+                    requestIdleCallback(doSync, {timeout: 50});
+                } else {
+                    setTimeout(doSync, 16);
+                }
+            }
         }
         
         // 滚动结束处理

@@ -86,6 +86,7 @@
 - ⚡ **性能**：减少无谓的 `console.log`（仅在 `DEBUG===true` 时输出），复用事件/资源对象，按视窗懒加载事件/资源，添加数字时间戳用于快速范围判断，整体降低短时分配与 GC 压力。
 - 🔧 **采样工具说明**：`runProfile`、`scripts/offline_profile.js` 与离线生成的测试数据仍保留用于开发环境性能采样，但**默认在生产模式下不运行**；如需在本地开发启用，请在 DevTools 中设置 `window.DEBUG_PROFILING = true` 并手动运行 `window.runProfile({iterations:10, delay:200})`。
 - ✅ **其他改进**：移除每事件独立的右键监听（改为委托），减少内存占用，并优化日志以降低开销。
+- ⚠️ **生产性能安全**：在生产中关闭了某些基于 rAF 的即时操作（改用 setTimeout/requestIdleCallback 回退），以避免浏览器控制台出现“Forced reflow / requestAnimationFrame handler took …” 类的 DevTools 性能警告。
 
 ### v1.3.2 (2025-12-18)
 
