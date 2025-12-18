@@ -671,6 +671,26 @@
         console.info(`[PROFILE] ${ctx.label}: ${timeMs}ms` + (memDiff !== null ? `, memDiff=${(memDiff/1024).toFixed(2)}KB` : ""));
     }
 
+    // Run multiple refreshes to gather timing/memory samples. Usage: from devtools run `runProfile({iterations:10, delay:200})`
+    async function runProfile({iterations = 5, delay = 200} = {}) {
+        if (!DEBUG_PROFILING) console.warn('runProfile: DEBUG_PROFILING is disabled; enable it for memory measurements.');
+        const times = [];
+        for (let i = 0; i < iterations; i++) {
+            const t0 = performance.now();
+            await refreshData();
+            const t1 = performance.now();
+            times.push(t1 - t0);
+            // small delay to allow GC/other work to settle
+            await new Promise(r => setTimeout(r, delay));
+        }
+        const sum = times.reduce((a, b) => a + b, 0);
+        const avg = (times.length > 0) ? (sum / times.length).toFixed(2) : '0';
+        console.info(`[PROFILE_RUN] iterations=${iterations}, avg=${avg}ms, times=[${times.map(t=>t.toFixed(2)).join(', ')}]`);
+        return {times, avg};
+    }
+    // expose for manual invocation
+    window.runProfile = runProfile;
+
     var availableStatuses = [];  // 可用的状态列表
     var databaseColorMap = {};  // 数据库中的颜色映射
     var ignoreStatuses = [];  // 屏蔽的状态列表
