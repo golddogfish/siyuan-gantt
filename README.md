@@ -76,6 +76,10 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 
 ## Changelog
 
+### v1.3.2 (in progress)
+
+- 🔧 **Perf**: Started `v1.3.2` branch; added lightweight profiling helpers and a `runProfile` harness to collect refresh timing/memory samples. Use `window.runProfile({iterations:10, delay:200})` from the browser devtools while `DEBUG_PROFILING=true` to gather data.
+
 ### v1.3.1 (2025-12-18)
 
 - 🔖 Bump: Save current working version as **v1.3.1**.
