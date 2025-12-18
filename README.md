@@ -76,9 +76,12 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 
 ## Changelog
 
-### v1.3.2 (in progress)
+### v1.3.2 (2025-12-18)
 
-- 🔧 **Perf**: Started `v1.3.2` branch; added lightweight profiling helpers and a `runProfile` harness to collect refresh timing/memory samples. Use `window.runProfile({iterations:10, delay:200})` from the browser devtools while `DEBUG_PROFILING=true` to gather data.
+- 🔧 **Perf**: Added profiling helpers and `runProfile` harness; replaced direct remove/add calendar updates with `calendar.setOption('resources', ...)` and `calendar.setOption('events', ...)` to leverage FullCalendar's internal diffing (significant rendering/perf improvements for large datasets).
+- 🔧 **Memory**: Reduced per-event listeners by switching to a delegated contextmenu handler and binding `data-event-id` to event DOM elements (reduces GC pressure when many events).
+- 🧪 Added `scripts/offline_profile.js` and `scripts/generate_large_json.js` to reproduce and benchmark parsing/rendering with large test datasets (10k rows used for profiling).
+
 
 ### v1.3.1 (2025-12-18)
 

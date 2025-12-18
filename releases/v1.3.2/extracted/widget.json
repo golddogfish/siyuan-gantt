@@ -1,0 +1,8 @@
+{
+  "name": "siyuan-gantt",
+  "author": "goldfish",
+  "url": "https://github.com/golddogfish/siyuan-gantt",
+  "version": "1.3.2",
+  "minAppVersion": "2.10.0",
+  "displayName": { "default": "Gantt Chart", "zh_CN": "甘特图" }
+}
