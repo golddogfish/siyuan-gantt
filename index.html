@@ -648,6 +648,11 @@
     var calendar;
     var widgetId = null;
     var customColorMap = {};  // 用户自定义颜色映射
+
+    // debug / profiling flags (turn off in production)
+    const DEBUG = false; // set to true to enable verbose logs
+    const DEBUG_PROFILING = false; // set to true to log timing information
+
     var availableStatuses = [];  // 可用的状态列表
     var databaseColorMap = {};  // 数据库中的颜色映射
     var ignoreStatuses = [];  // 屏蔽的状态列表
@@ -1429,7 +1434,9 @@
     async function refreshData() {
         clearError();
         // 每次刷新时确认一次宿主主题（仅一次性检测，不进行持续观察）
-        try { detectSiyuanTheme(); } catch (e) { console.warn('刷新时主题检测失败:', e); }
+        try { detectSiyuanTheme(); } catch (e) { if (DEBUG) console.warn('刷新时主题检测失败:', e); }
+        // Profiling start
+        if (DEBUG_PROFILING) { window._refreshPerfStart = performance.now(); }
 
         try {
             const calendarEl = document.getElementById('calendar');
@@ -1462,7 +1469,8 @@
                 return;
             }
             
-            console.log('数据库数据:', result.data);
+            if (DEBUG) console.log('数据库数据:', result.data);
+            if (DEBUG_PROFILING) console.log('refreshData - rows:', view.rows.length, 'cols:', view.columns.length);
 
             const resources = [];
             const events = [];
@@ -1609,7 +1617,7 @@
             // 处理每一行
             view.rows.forEach((row, index) => {
                 try {
-                    console.log(`处理行 ${index}:`, row);
+                            if (DEBUG) console.log(`处理行 ${index}:`, row);
                     // 获取单元格值
                     const getCellValue = (colId) => {
                         const cell = row.cells.find(c => c.value?.keyID === colId);
@@ -1701,7 +1709,7 @@
                         return;
                     }
 
-                    console.log(`添加项目: ${projectName}, 状态=${status}, 颜色=${statusColor}, 开始=${startDate}, 截止=${endDate}, rowId=${rowId}`);
+                    if (DEBUG) console.log(`添加项目: ${projectName}, 状态=${status}, 颜色=${statusColor}, 开始=${startDate}, 截止=${endDate}, rowId=${rowId}`);
 
                     // 构建资源 - 使用rowId作为唯一标识符（用于API调用）
                     resources.push({
@@ -1733,7 +1741,7 @@
                         }
                     };
                     
-                    console.log(`创建事件:`, eventObj);
+                    if (DEBUG) console.log(`创建事件:`, eventObj);
                     events.push(eventObj);
                 } catch (rowError) {
                     console.error(`处理行 ${index} 失败:`, rowError);
@@ -1747,7 +1755,8 @@
             resources.forEach(r => calendar.addResource(r));
             events.forEach(e => calendar.addEvent(e));
 
-            console.log(`加载了 ${resources.length} 个项目`);
+            if (DEBUG) console.log(`加载了 ${resources.length} 个项目`);
+            if (DEBUG_PROFILING) console.log('refreshData time:', performance.now() - (window._refreshPerfStart || performance.now()), 'ms');
 
         } catch (e) {
             console.error("获取数据异常:", e);

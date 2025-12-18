@@ -76,6 +76,12 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 
 ## Changelog
 
+### v1.3.1 (2025-12-18)
+
+- 🔖 Bump: Save current working version as **v1.3.1**.
+- ⚙️ Perf: Added initial debug/profiling flags and reduced noisy logging to prepare for performance profiling in v1.3.2.
+- 🧾 Misc: Documentation and release artifacts updated (icon/preview included in release bundle).
+
 ### v1.3.0 (2025-12-17)
 
 - ✨ New: Added **Light (bright) theme** and theme-detection on each refresh — widget now matches SiYuan's bright/dark mode when you click `刷新`.
