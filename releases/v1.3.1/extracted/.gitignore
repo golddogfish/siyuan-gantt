@@ -1,0 +1,16 @@
+# 配置文件（用户特定）
+gantt-config-*.json
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node.js (如果以后添加构建工具)
+node_modules/
+package-lock.json

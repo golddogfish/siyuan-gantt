@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset='utf-8'/>
+    <title>思源笔记 - 项目甘特图</title>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.15/index.global.min.js'></script>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 14px;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #calendar {
+            max-width: 100%;
+            height: 100vh;
+            margin: 0 auto;
+        }
+        
+        select, button, input {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #005a9e;
+        }
+
+        .info {
+            font-size: 12px;
+            color: #999;
+        }
+
+        label {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        /* 设置按钮在工具栏中 */
+        .fc-settings-button {
+            font-size: 16px !important;
+            padding: 4px 10px !important;
+            margin-left: 10px !important;
+        }
+
+        /* 颜色配置面板 */
+        .color-config-panel {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .color-config-panel.show {
+            display: block;
+        }
+
+        .color-config-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #555;
+        }
+
+        .color-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: #1e1e1e;
+            border-radius: 4px;
+        }
+
+        .color-item label {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .color-item input[type="color"] {
+            width: 60px;
+            height: 36px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .color-config-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #555;
+        }
+
+        .color-config-buttons button {
+            flex: 1;
+            padding: 8px 16px;
+        }
+
+        .config-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .config-section:last-of-type {
+            border-bottom: none;
+        }
+
+        .config-section-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #1E90FF;
+        }
+
+        .config-input {
+            width: 100%;
+            padding: 8px;
+            background: #1e1e1e;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .status-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            background: #1e1e1e;
+            border-radius: 4px;
+        }
+
+        .status-checkbox input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .status-checkbox label {
+            cursor: pointer;
+            flex: 1;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 999;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        /* 右键菜单样式 */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 6px 0;
+            min-width: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .context-menu.show {
+            display: block;
+        }
+
+        .context-menu-header {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #999;
+            border-bottom: 1px solid #404040;
+            margin-bottom: 4px;
+        }
+
+        .context-menu-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s;
+        }
+
+        .context-menu-item:hover {
+            background: #3d3d3d;
+        }
+
+        .context-menu-item.active {
+            background: #0078d4;
+        }
+
+        .context-menu-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid #666;
+        }
+
+        /* FullCalendar 黑色主题覆盖 */
+        .fc {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+        }
+
+        .fc-theme-standard td, .fc-theme-standard th {
+            border-color: #404040;
+        }
+
+        .fc-col-header-cell {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+
+        .fc-datagrid-cell-frame {
+            background-color: #1e1e1e !important;
+        }
+
+        .fc-timeline-slot {
+            background-color: #1e1e1e;
+        }
+
+        .fc-button {
+            background-color: #0078d4 !important;
+            border-color: #0078d4 !important;
+            color: white !important;
+        }
+
+        .fc-button:hover {
+            background-color: #005a9e !important;
+        }
+
+        .fc-button-active {
+            background-color: #005a9e !important;
+        }
+
+        /* 今日标记线样式 */
+        .fc-timeline-now-indicator-line {
+            border-color: #dc3545 !important;
+            border-width: 2px !important;
+        }
+
+        /* 隐藏默认的小三角箭头 */
+        .fc-timeline-now-indicator-arrow {
+            display: none !important;
+        }
+        
+        /* 今日日期栏底部红线 */
+        .fc-timeline-slot.fc-day-today,
+        .fc-day-today.fc-timeline-slot-frame {
+            border-bottom: 3px solid #dc3545 !important;
+        }
+
+        /* 明亮主题下也强制保留红色下划线（覆盖任何表头默认边框） */
+        .gantt-theme-light .fc-timeline-slot.fc-day-today,
+        .gantt-theme-light .fc-day-today.fc-timeline-slot-frame,
+        .gantt-theme-light .fc-col-header-cell.fc-day-today {
+            border-bottom: 3px solid #dc3545 !important;
+            box-shadow: none !important;
+        }
+
+        /* 如果头部有覆盖层（白色块）遮挡 now-indicator 的显示，提升 now-indicator 的 z-index
+           并确保 header 不使用更高的 z-index */
+        .gantt-theme-light .fc .fc-col-header-cell {
+            z-index: 2 !important;
+        }
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-line,
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-arrow {
+            z-index: 9999999 !important;
+        }
+
+        /* 周末背景颜色 */
+        .fc-day-sat {
+            background-color: #2a2a2a !important;
+        }
+
+        .fc-day-sun {
+            background-color: #252525 !important;
+        }
+
+        /* 调整行高和色块高度 */
+        .fc-timeline-slot {
+            height: 28px !important;
+        }
+
+        .fc-timeline-event {
+            line-height: 1.5 !important;
+            font-size: 13px !important;
+            padding: 2px 6px !important;
+            margin-top: 8px !important;
+        }
+
+        /* 左侧项目列表行高 */
+        .fc-datagrid-cell-cushion {
+            line-height: 28px !important;
+        }
+
+        .fc-resource {
+            min-height: 28px !important;
+            height: 28px !important;
+        }
+
+        .fc-timeline-lane {
+            height: 28px !important;
+        }
+
+        /* 错误提示在标题旁的样式 */
+        #gantt-error {
+            color: #f48771;
+            font-size: 12px;
+            margin-left: 15px;
+            font-weight: normal;
+            vertical-align: middle;
+            display: inline-block;
+            line-height: 1.5;
+        }
+
+        .fc-toolbar-title {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .fc-toolbar-chunk {
+            display: flex;
+            align-items: center;
+        }
+
+        /* 确保左右同步滚动 */
+        .fc-scroller {
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+        }
+
+        .fc-scroller-liquid-absolute {
+            overflow: auto !important;
+        }
+
+        /* 左右面板同步垂直滚动 */
+        .fc-datagrid-body .fc-scroller,
+        .fc-timeline-body .fc-scroller {
+            overflow-y: scroll !important;
+        }
+
+        /* 确保左右两侧内容高度一致，防止滚动到底部时错位 */
+        .fc-timeline-events {
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+
+        .fc-timeline-lane-frame {
+            overflow: hidden !important;
+        }
+        /* -- Light theme overrides -- */
+        /* 启用方法：在 <html> 上添加类 `gantt-theme-light` */
+        .gantt-theme-light body {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        .gantt-theme-light input,
+        .gantt-theme-light select,
+        .gantt-theme-light button {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #dcdcdc !important;
+        }
+
+        .gantt-theme-light .color-config-panel {
+            background: #ffffff !important;
+            border-color: #e6e6e6 !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06) !important;
+            color: #111 !important;
+        }
+
+        .gantt-theme-light .overlay {
+            background: rgba(0,0,0,0.06) !important;
+        }
+
+        .gantt-theme-light .context-menu {
+            background: #ffffff !important;
+            border: 1px solid #e6e6e6 !important;
+            color: #111 !important;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06) !important;
+        }
+
+        .gantt-theme-light .fc {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        .gantt-theme-light .fc-col-header-cell {
+            background-color: #f7f7f7 !important;
+            color: #111 !important;
+            border-color: #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .fc-theme-standard td, .gantt-theme-light .fc-theme-standard th {
+            border-color: #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .fc-datagrid-cell-frame {
+            background-color: #ffffff !important;
+        }
+
+        .gantt-theme-light .fc-day-sat,
+        .gantt-theme-light .fc-day-sun {
+            background-color: #fbfbfb !important;
+        }
+
+        /* 修复：在明亮主题下，FullCalendar 的时间轴区域（甘特区域）仍然被默认深色覆盖。
+           使用更高优先级的选择器强制覆盖这些区域为白色背景和深色文本。 */
+        .gantt-theme-light .fc .fc-timeline-body,
+        .gantt-theme-light .fc .fc-timeline-slot,
+        .gantt-theme-light .fc .fc-timeline-lane,
+        .gantt-theme-light .fc .fc-timeline-lane-frame,
+        .gantt-theme-light .fc .fc-timeline-events,
+        .gantt-theme-light .fc .fc-scroller,
+        .gantt-theme-light .fc .fc-timeline-slots {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        /* 调整今日指示线和网格线在明亮主题下的显示 */
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line {
+            border-color: #dc3545 !important;
+        }
+
+        /* 强制在明亮主题下，让今日指示线保持鲜红并高于表头/网格，防止被遮盖或变灰 */
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line {
+            border-color: #dc3545 !important;
+            background-color: #dc3545 !important;
+            box-shadow: none !important;
+            opacity: 1 !important;
+            z-index: 99999 !important;
+        }
+
+        /* 如果有伪元素或箭头，把它也设为红色并确保可见 */
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line::before,
+        .gantt-theme-light .fc .fc-timeline-now-indicator-line::after {
+            background-color: #dc3545 !important;
+            border-color: #dc3545 !important;
+            opacity: 1 !important;
+        }
+
+        /* 额外修正：轴（header）位置的 now-indicator 箭头/线在明亮主题下也应为红色并可见 */
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-arrow,
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-line {
+            border-color: #dc3545 !important;
+            background-color: transparent !important;
+            opacity: 1 !important;
+            box-shadow: none !important;
+            z-index: 999999 !important;
+        }
+
+        /* 确保轴（header）容器不会裁剪 now-indicator 的显示 */
+        .gantt-theme-light .fc .fc-timegrid-col-frame,
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-container {
+            overflow: visible !important;
+        }
+
+        /* 箭头具体颜色（左右兼容） */
+        .gantt-theme-light .fc .fc-timegrid-now-indicator-arrow {
+            border-left-color: #dc3545 !important;
+            border-right-color: #dc3545 !important;
+        }
+
+        /* 更可靠的明亮主题覆盖：使用 FullCalendar 的 CSS 变量并覆盖关键容器，
+           以确保 timeline/timegrid/slots 等区域也能成为白底深色文本 */
+        .gantt-theme-light .fc {
+            /* 页面与中性背景 */
+            --fc-page-bg-color: #ffffff !important;
+            --fc-neutral-bg-color: #ffffff !important;
+            --fc-border-color: #e9e9e9 !important;
+            /* 时间轴格子背景 */
+            --fc-daygrid-bg: #ffffff !important;
+            /* 事件文字颜色 */
+            --fc-event-text-color: #111111 !important;
+            --fc-event-bg-color: #3788d8 !important;
+        }
+
+        /* 额外覆盖：针对 timegrid/timeline 的实际 DOM 容器 */
+        .gantt-theme-light .fc .fc-timegrid-col-bg,
+        .gantt-theme-light .fc .fc-timegrid-slot,
+        .gantt-theme-light .fc .fc-timegrid-slot-lane,
+        .gantt-theme-light .fc .fc-timegrid-col-frame,
+        .gantt-theme-light .fc .fc-timegrid-slots,
+        .gantt-theme-light .fc .fc-timegrid-cols,
+        .gantt-theme-light .fc .fc-timeline-body,
+        .gantt-theme-light .fc .fc-timeline-slot {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        /* 覆盖滚动区和填充层（防止底色被遮盖） */
+        .gantt-theme-light .fc .fc-scrollgrid-section-liquid,
+        .gantt-theme-light .fc .fc-scrollgrid-section > .fc-scrollgrid-section-inner {
+            background-color: #ffffff !important;
+        }
+
+        /* 配置面板内项目（status checkbox / color items）在明亮主题下也要为白底 */
+        .gantt-theme-light .status-checkbox,
+        .gantt-theme-light .color-item {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .color-config-panel {
+            background: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        /* 修复设置面板的字体颜色：确保所有控件在明亮主题下为深色文本 */
+        .gantt-theme-light .color-config-panel,
+        .gantt-theme-light .color-config-panel * {
+            color: #111111 !important;
+        }
+
+        .gantt-theme-light .color-config-panel input[type="text"],
+        .gantt-theme-light .color-config-panel input[type="color"],
+        .gantt-theme-light .color-config-panel textarea,
+        .gantt-theme-light .color-config-panel select {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #e9e9e9 !important;
+        }
+
+        .gantt-theme-light .color-config-panel input::placeholder {
+            color: #dc3545 !important;
+            opacity: 1 !important;
+        }
+
+        .gantt-theme-light .status-checkbox,
+        .gantt-theme-light .color-item {
+            background: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #e9e9e9 !important;
+            opacity: 1 !important;
+        }
+
+        .gantt-theme-light .status-checkbox input[type="checkbox"] {
+            accent-color: #0078d4; /* 现代浏览器优先样式 */
+        }
+
+        .gantt-theme-light .status-checkbox label {
+            color: #111111 !important;
+            opacity: 1 !important;
+        }
+
+        .gantt-theme-light .fc-button {
+            background-color: #0078d4 !important;
+            border-color: #0078d4 !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeColorConfig()"></div>
+
+<!-- 右键菜单 -->
+<div class="context-menu" id="contextMenu">
+    <div class="context-menu-header">修改状态</div>
+    <div id="contextMenuItems"></div>
+</div>
+
+<div class="color-config-panel" id="colorConfigPanel">
+    <div class="color-config-header">甘特图配置</div>
+    
+    <div class="config-section">
+        <div class="config-section-title">数据库设置</div>
+        <input id="configBlockId" type="text" class="config-input" placeholder="输入数据库块ID">
+    </div>
+    
+    <div class="config-section">
+        <div class="config-section-title">屏蔽状态（勾选要隐藏的状态）</div>
+        <div id="ignoreStatusItems"></div>
+    </div>
+    
+    <div class="config-section">
+        <div class="config-section-title">状态颜色配置</div>
+        <div id="colorConfigItems"></div>
+    </div>
+    
+    <div class="color-config-buttons">
+        <button onclick="saveColorConfig()">保存并刷新</button>
+        <button onclick="resetColorConfig()">重置默认</button>
+        <button onclick="closeColorConfig()">取消</button>
+    </div>
+</div>
+
+<div id='calendar'></div>
+
+<script>
+    // ==========================================
+    // 配置
+    // ==========================================
+    const CONFIG = {
+        // 数据库中的列名（字段名）
+        colName: "项目名称",
+        colStart: "开始时间",
+        colEnd: "截止时间",
+        colStatus: "完成情况"
+    };
+
+    var calendar;
+    var widgetId = null;
+    var customColorMap = {};  // 用户自定义颜色映射
+
+    // debug / profiling flags (turn off in production)
+    const DEBUG = false; // set to true to enable verbose logs
+    const DEBUG_PROFILING = false; // set to true to log timing information
+
+    var availableStatuses = [];  // 可用的状态列表
+    var databaseColorMap = {};  // 数据库中的颜色映射
+    var ignoreStatuses = [];  // 屏蔽的状态列表
+    var currentDatabaseId = '';  // 当前数据库ID
+    var avId = '';  // 数据库属性视图ID
+    var statusColId = '';  // 状态列ID
+    var startColId = '';  // 开始日期列ID
+    var endColId = '';  // 结束日期列ID
+    var statusOptions = [];  // 状态选项列表
+    var currentContextEvent = null;  // 当前右键点击的事件
+
+    // 获取挂件ID
+    function getWidgetId() {
+        try {
+            widgetId = window.frameElement?.parentElement?.parentElement?.getAttribute("data-node-id");
+            console.log('挂件块ID:', widgetId);
+            loadConfig();
+        } catch (error) {
+            console.error('获取挂件ID失败:', error);
+        }
+    }
+
+    // ==========================================
+    // 思源数据库更新 API
+    // ==========================================
+    
+    // 更新单元格日期值
+    async function updateCellDate(rowId, colId, timestamp) {
+        try {
+            console.log('更新日期 - avId:', avId, 'keyID:', colId, 'itemID:', rowId, 'timestamp:', timestamp);
+            const response = await fetch('/api/av/setAttributeViewBlockAttr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    avID: avId,
+                    keyID: colId,
+                    itemID: rowId,  // 使用 itemID（新参数名）
+                    value: {
+                        date: {
+                            content: timestamp,
+                            isNotEmpty: true
+                        }
+                    }
+                })
+            });
+            const result = await response.json();
+            console.log('更新日期响应:', result);
+            if (result.code !== 0) {
+                console.error('更新日期失败:', result.msg);
+                return false;
+            }
+            console.log('日期更新成功');
+            return true;
+        } catch (e) {
+            console.error('更新日期异常:', e);
+            return false;
+        }
+    }
+
+    // 更新单元格状态值
+    async function updateCellStatus(rowId, statusName) {
+        try {
+            // 查找状态选项
+            const option = statusOptions.find(opt => opt.name === statusName);
+            if (!option) {
+                console.error('未找到状态选项:', statusName);
+                return false;
+            }
+
+            console.log('更新状态 - avId:', avId, 'keyID:', statusColId, 'itemID:', rowId, 'status:', statusName, 'option:', option);
+            const response = await fetch('/api/av/setAttributeViewBlockAttr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    avID: avId,
+                    keyID: statusColId,
+                    itemID: rowId,  // 使用 itemID（新参数名）
+                    value: {
+                        mSelect: [{
+                            content: option.name,
+                            color: option.color
+                        }]
+                    }
+                })
+            });
+            const result = await response.json();
+            console.log('更新状态响应:', result);
+            if (result.code !== 0) {
+                console.error('更新状态失败:', result.msg);
+                return false;
+            }
+            console.log('状态更新成功:', statusName);
+            return true;
+        } catch (e) {
+            console.error('更新状态异常:', e);
+            return false;
+        }
+    }
+
+    // ==========================================
+    // 右键菜单
+    // ==========================================
+    function showContextMenu(event, fcEvent) {
+        event.preventDefault();
+        currentContextEvent = fcEvent;
+
+        console.log('显示右键菜单 - 事件:', fcEvent.title, 'availableStatuses:', availableStatuses);
+
+        const menu = document.getElementById('contextMenu');
+        const menuItems = document.getElementById('contextMenuItems');
+        
+        // 生成状态选项
+        menuItems.innerHTML = '';
+        
+        if (availableStatuses.length === 0) {
+            console.warn('没有可用的状态选项');
+            const item = document.createElement('div');
+            item.className = 'context-menu-item';
+            item.innerHTML = '<span>暂无状态选项</span>';
+            menuItems.appendChild(item);
+        } else {
+            availableStatuses.forEach(status => {
+                const color = customColorMap[status] || databaseColorMap[status] || '#3788d8';
+                const isActive = fcEvent.title === status;
+                const item = document.createElement('div');
+                item.className = 'context-menu-item' + (isActive ? ' active' : '');
+                item.innerHTML = `
+                    <span class="context-menu-color" style="background-color: ${color}"></span>
+                    <span>${status}</span>
+                `;
+                item.onclick = () => handleStatusChange(status);
+                menuItems.appendChild(item);
+            });
+        }
+
+        // 定位菜单 - 确保不超出屏幕边界
+        const menuWidth = 180; // 预估菜单宽度
+        const menuMaxHeight = 300; // CSS中设置的max-height
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // 计算最佳位置
+        let left = event.clientX;
+        let top = event.clientY;
+        
+        // 如果菜单会超出右边界，向左调整
+        if (left + menuWidth > viewportWidth) {
+            left = viewportWidth - menuWidth - 10;
+        }
+        
+        // 如果菜单会超出底部边界，向上调整
+        if (top + menuMaxHeight > viewportHeight) {
+            top = viewportHeight - menuMaxHeight - 10;
+            // 确保不会超出顶部
+            if (top < 10) top = 10;
+        }
+        
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+        menu.classList.add('show');
+
+        // 点击其他地方关闭菜单
+        setTimeout(() => {
+            document.addEventListener('click', closeContextMenu, { once: true });
+        }, 0);
+    }
+
+    function closeContextMenu() {
+        document.getElementById('contextMenu').classList.remove('show');
+        currentContextEvent = null;
+    }
+
+    async function handleStatusChange(newStatus) {
+        if (!currentContextEvent) return;
+        
+        // 从extendedProps获取rowId，或从事件ID中提取（兼容旧方式）
+        const rowId = currentContextEvent.extendedProps?.rowId || currentContextEvent.id.replace('_event', '');
+        const eventId = currentContextEvent.id;
+        console.log('处理状态更改 - rowId:', rowId, 'eventId:', eventId, 'newStatus:', newStatus);
+        
+        const success = await updateCellStatus(rowId, newStatus);
+        
+        if (success) {
+            // 更新本地甘特图显示
+            const color = customColorMap[newStatus] || databaseColorMap[newStatus] || '#3788d8';
+            console.log('更新甘特图显示 - newStatus:', newStatus, 'color:', color);
+            
+            // 通过 calendar API 获取事件并更新
+            const calendarEvent = calendar.getEventById(eventId);
+            if (calendarEvent) {
+                // 保存原始事件属性
+                const eventData = {
+                    id: calendarEvent.id,
+                    resourceId: calendarEvent.getResources()[0]?.id,
+                    title: newStatus,
+                    start: calendarEvent.start,
+                    end: calendarEvent.end,
+                    allDay: true,  // 全天事件，不显示时间
+                    backgroundColor: color,
+                    borderColor: color,
+                    color: color,
+                    extendedProps: {
+                        ...calendarEvent.extendedProps,
+                        textColor: '#ffffff'
+                    }
+                };
+                
+                // 删除旧事件，添加新事件
+                calendarEvent.remove();
+                calendar.addEvent(eventData);
+                console.log('事件更新成功（重新创建）');
+            } else {
+                console.warn('未找到事件:', eventId);
+                // 备用方案：刷新数据
+                refreshData();
+            }
+        } else {
+            alert('更新状态失败');
+        }
+        
+        closeContextMenu();
+    }
+
+    // 保存配置
+    async function saveConfig() {
+        if (!widgetId) return;
+        
+        // 先删除所有旧的配置文件
+        try {
+            const listResponse = await fetch("http://127.0.0.1:6806/api/file/readDir", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: "/data/widgets/siyuan-gantt" })
+            });
+            
+            if (listResponse.ok) {
+                const listResult = await listResponse.json();
+                if (listResult.code === 0 && listResult.data) {
+                    // 查找所有 gantt-config-*.json 文件
+                    const configFiles = listResult.data.filter(file => 
+                        file.name.startsWith('gantt-config-') && file.name.endsWith('.json')
+                    );
+                    
+                    // 删除所有旧配置文件
+                    for (const file of configFiles) {
+                        await fetch("http://127.0.0.1:6806/api/file/removeFile", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ path: `/data/widgets/siyuan-gantt/${file.name}` })
+                        });
+                    }
+                    console.log(`已删除 ${configFiles.length} 个旧配置文件`);
+                }
+            }
+        } catch (error) {
+            console.log('清理旧配置文件时出错:', error);
+        }
+        
+        // 保存新配置
+        const blockId = document.getElementById('configBlockId')?.value?.trim() || '';
+        const config = { 
+            widgetId, 
+            blockId,
+            customColors: customColorMap,  // 保存自定义颜色
+            ignoreStatuses: ignoreStatuses  // 保存屏蔽状态
+        };
+        
+        const formData = new FormData();
+        // 使用相对路径，保存在当前挂件目录下
+        formData.append("path", `/data/widgets/siyuan-gantt/gantt-config-${widgetId}.json`);
+        formData.append("file", new Blob([JSON.stringify(config)], { type: 'application/json' }));
+        
+        fetch("http://127.0.0.1:6806/api/file/putFile", { 
+            method: "POST", 
+            body: formData 
+        }).then(() => console.log('配置已保存'));
+    }
+
+    // 加载配置
+    async function loadConfig() {
+        if (!widgetId) return;
+        try {
+            const response = await fetch("http://127.0.0.1:6806/api/file/getFile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path: `/data/widgets/siyuan-gantt/gantt-config-${widgetId}.json` })
+            });
+            if (response.ok) {
+                const text = await response.text();
+                const config = JSON.parse(text);
+                if (config.blockId) {
+                    const input = document.getElementById('configBlockId');
+                    if (input) input.value = config.blockId;
+                    const calendarEl = document.getElementById('calendar');
+                    if (calendarEl) {
+                        calendarEl.dataset.blockId = config.blockId;
+                    }
+                }
+                if (config.customColors) {
+                    customColorMap = config.customColors;
+                    console.log('加载自定义颜色:', customColorMap);
+                }
+                if (config.ignoreStatuses) {
+                    ignoreStatuses = config.ignoreStatuses;
+                    console.log('加载屏蔽状态:', ignoreStatuses);
+                }
+
+                // 配置加载完成后立即刷新，确保关闭再打开窗口能恢复数据库ID
+                if (document.getElementById('calendar')?.dataset?.blockId) {
+                    refreshData();
+                }
+            }
+        } catch (e) {
+            console.log('未找到配置');
+        }
+    }
+
+    // ==========================================
+    // 颜色配置功能
+    // ==========================================
+    function openColorConfig() {
+        // 填充数据库ID
+        const blockIdInput = document.getElementById('configBlockId');
+        const calendarEl = document.getElementById('calendar');
+        const currentBlockId = calendarEl?.dataset?.blockId || '';
+        if (blockIdInput) {
+            blockIdInput.value = currentBlockId;
+        }
+        
+        // 生成屏蔽状态复选框
+        const ignoreContainer = document.getElementById('ignoreStatusItems');
+        ignoreContainer.innerHTML = '';
+        if (availableStatuses.length > 0) {
+            availableStatuses.forEach(status => {
+                const div = document.createElement('div');
+                div.className = 'status-checkbox';
+                const checked = ignoreStatuses.includes(status) ? 'checked' : '';
+                div.innerHTML = `
+                    <input type="checkbox" id="ignore_${status}" ${checked} data-status="${status}">
+                    <label for="ignore_${status}">${status}</label>
+                `;
+                ignoreContainer.appendChild(div);
+            });
+        } else {
+            ignoreContainer.innerHTML = '<div style="color: #999; font-size: 12px;">请先输入数据库ID并保存</div>';
+        }
+        
+        // 生成颜色配置项
+        const colorContainer = document.getElementById('colorConfigItems');
+        colorContainer.innerHTML = '';
+        if (availableStatuses.length > 0) {
+            availableStatuses.forEach(status => {
+                // 优先使用自定义颜色，其次使用数据库颜色，最后使用默认颜色
+                const currentColor = customColorMap[status] || databaseColorMap[status] || '#3788d8';
+                const div = document.createElement('div');
+                div.className = 'color-item';
+                div.innerHTML = `
+                    <label>${status}</label>
+                    <input type="color" value="${currentColor}" data-status="${status}">
+                `;
+                colorContainer.appendChild(div);
+            });
+        } else {
+            colorContainer.innerHTML = '<div style="color: #999; font-size: 12px;">请先输入数据库ID并保存</div>';
+        }
+        
+        document.getElementById('overlay').classList.add('show');
+        document.getElementById('colorConfigPanel').classList.add('show');
+    }
+
+    function closeColorConfig() {
+        document.getElementById('overlay').classList.remove('show');
+        document.getElementById('colorConfigPanel').classList.remove('show');
+    }
+
+    function saveColorConfig() {
+        // 收集数据库ID
+        const blockId = document.getElementById('configBlockId').value.trim();
+        if (blockId) {
+            // 保存到calendar容器的dataset中
+            const calendarEl = document.getElementById('calendar');
+            if (calendarEl) calendarEl.dataset.blockId = blockId;
+        }
+        
+        // 收集屏蔽状态
+        const ignoreCheckboxes = document.querySelectorAll('.status-checkbox input[type="checkbox"]');
+        ignoreStatuses = [];
+        ignoreCheckboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                ignoreStatuses.push(checkbox.getAttribute('data-status'));
+            }
+        });
+        
+        // 收集所有颜色设置
+        const colorInputs = document.querySelectorAll('.color-item input[type="color"]');
+        colorInputs.forEach(input => {
+            const status = input.getAttribute('data-status');
+            customColorMap[status] = input.value;
+        });
+        
+        console.log('保存配置 - 数据库ID:', blockId, '屏蔽状态:', ignoreStatuses, '自定义颜色:', customColorMap);
+        saveConfig();
+        closeColorConfig();
+        
+        // 重新加载数据以应用新配置
+        refreshData();
+    }
+
+    function resetColorConfig() {
+        if (confirm('确定要重置为默认颜色吗？')) {
+            customColorMap = {};
+            saveConfig();
+            closeColorConfig();
+            refreshData();
+        }
+    }
+
+    // ==========================================
+    // 滚动到今天居中
+    // ==========================================
+    function scrollToTodayCenter() {
+        // 查找所有可能的滚动容器
+        const scrollers = document.querySelectorAll('.fc-scroller, .fc-scroller-liquid-absolute');
+        let targetScroller = null;
+        
+        // 找到可以水平滚动的容器（scrollWidth > clientWidth）
+        scrollers.forEach(el => {
+            if (el.scrollWidth > el.clientWidth) {
+                targetScroller = el;
+            }
+        });
+        
+        if (!targetScroller) return;
+        
+        // 查找今日指示线
+        let nowIndicator = document.querySelector('.fc-timeline-now-indicator-line');
+        if (nowIndicator) {
+            // 获取指示线在整个滚动内容中的位置
+            const indicatorRect = nowIndicator.getBoundingClientRect();
+            const scrollerRect = targetScroller.getBoundingClientRect();
+            
+            // 计算指示线相对于滚动容器左边界的当前可见位置，加上已滚动距离
+            const indicatorPosInContent = indicatorRect.left - scrollerRect.left + targetScroller.scrollLeft;
+            const scrollerWidth = targetScroller.clientWidth;
+            const targetScrollLeft = indicatorPosInContent - scrollerWidth / 2;
+            
+            targetScroller.scrollLeft = targetScrollLeft;
+        }
+    }
+    
+    // ==========================================
+    // 初始化
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', function() {
+        getWidgetId();
+        initCalendar();
+        refreshData();
+    });
+
+    // 防抖刷新需要的全局变量
+    let lastRefreshTime = 0;
+    const REFRESH_DEBOUNCE = 1000;  // 1秒内的多次变化只刷新一次
+    
+    // 防抖刷新，避免短时间内多次刷新
+    function debouncedRefresh() {
+        const now = Date.now();
+        if (now - lastRefreshTime < REFRESH_DEBOUNCE) {
+            return;
+        }
+        lastRefreshTime = now;
+        
+        console.log('检测到数据库变化，自动刷新甘特图');
+        refreshData();
+    }
+
+    // 初始化日历
+    function initCalendar() {
+        var calendarEl = document.getElementById('calendar');
+
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            timeZone: 'local',
+            schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source',
+            locale: 'zh-cn',
+            headerToolbar: {
+                left: 'refreshButton today prev,next',
+                center: 'title',
+                right: 'resourceTimelineWeek,resourceTimelineMonth settingsButton'
+            },
+            customButtons: {
+                settingsButton: {
+                    text: '⚙️',
+                    click: function() {
+                        openColorConfig();
+                    }
+                }
+                ,
+                refreshButton: {
+                    text: '刷新',
+                    click: function() {
+                        // 手动刷新数据
+                        try {
+                            console.log('手动刷新：用户触发刷新按钮');
+                            refreshData();
+                        } catch (e) {
+                            console.error('刷新失败', e);
+                        }
+                    },
+                    // 提示文字
+                    title: '刷新甘特图'
+                }
+            },
+            initialView: 'resourceTimelineWeek',
+            scrollTime: '08:00',
+            aspectRatio: 1.5,
+            resourceAreaWidth: '25%',
+            resourceAreaHeaderContent: '项目列表',
+            nowIndicator: true,  // 显示今日标记线
+            scrollTimeReset: false,  // 切换视图时不重置滚动位置
+            
+            // 视图渲染完成后将今天滚动到屏幕中央
+            datesSet: function(info) {
+                // 使用 requestAnimationFrame 确保在渲染后立即执行，减少卡顿
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        scrollToTodayCenter();
+                        // 视图切换后重新设置滚动同步
+                        setupScrollSync();
+                        // 仅使用 headerToolbar 中配置的 refreshButton
+                    });
+                });
+            },
+            
+            views: {
+                resourceTimelineMonth: {
+                    buttonText: '月视图',
+                    slotDuration: { days: 1 },
+                    slotLabelFormat: [
+                        { month: 'numeric', day: 'numeric' }  // 显示 12.11 格式
+                    ]
+                },
+                resourceTimelineWeek: {
+                    buttonText: '周视图',
+                    slotDuration: { days: 1 },
+                    slotLabelFormat: [
+                        { month: 'numeric', day: 'numeric' }  // 显示 12.11 格式
+                    ]
+                }
+            },
+            editable: true,  // 启用拖动编辑
+            eventResizableFromStart: true,  // 允许从开始调整大小
+            eventDurationEditable: true,  // 允许调整时长
+            eventResourceEditable: false,  // 禁止拖动到其他行，只允许左右移动
+            resources: [],
+            events: [],
+            
+            // 强制使用事件自身的颜色，不使用默认颜色
+            eventColor: null,
+            eventBackgroundColor: null,
+            eventBorderColor: null,
+            
+            // 事件渲染钩子，确保颜色正确应用
+            eventDidMount: function(info) {
+                // 直接设置元素样式，强制应用颜色
+                if (info.event.backgroundColor) {
+                    info.el.style.backgroundColor = info.event.backgroundColor;
+                }
+                if (info.event.borderColor) {
+                    info.el.style.borderColor = info.event.borderColor;
+                }
+                if (info.event.extendedProps.textColor) {
+                    info.el.style.color = info.event.extendedProps.textColor;
+                }
+                
+                // 添加右键菜单事件
+                info.el.addEventListener('contextmenu', function(e) {
+                    showContextMenu(e, info.event);
+                });
+            },
+            
+            // 事件拖动结束回调
+            eventDrop: async function(info) {
+                console.log('事件拖动:', info.event.title, '新开始时间:', info.event.start, '新结束时间:', info.event.end);
+                
+                // 从extendedProps获取rowId（数据库行ID）
+                const rowId = info.event.extendedProps?.rowId || info.event.id.replace('_event', '');
+                console.log('拖动事件 - rowId:', rowId);
+                const startTimestamp = info.event.start ? info.event.start.getTime() : null;
+                // FullCalendar的end是不包含的，所以需要减1天得到实际结束日期
+                let endTimestamp = null;
+                if (info.event.end) {
+                    const actualEndDate = new Date(info.event.end);
+                    actualEndDate.setDate(actualEndDate.getDate() - 1);
+                    endTimestamp = actualEndDate.getTime();
+                }
+                
+                let success = true;
+                if (startTimestamp && startColId) {
+                    success = await updateCellDate(rowId, startColId, startTimestamp) && success;
+                }
+                if (endTimestamp && endColId) {
+                    success = await updateCellDate(rowId, endColId, endTimestamp) && success;
+                }
+                
+                if (!success) {
+                    info.revert();
+                    alert('更新日期失败，已恢复');
+                }
+            },
+            
+            // 事件调整大小结束回调
+            eventResize: async function(info) {
+                console.log('事件调整大小:', info.event.title, '新开始时间:', info.event.start, '新结束时间:', info.event.end);
+                
+                // 从extendedProps获取rowId（数据库行ID）
+                const rowId = info.event.extendedProps?.rowId || info.event.id.replace('_event', '');
+                console.log('调整大小事件 - rowId:', rowId);
+                const startTimestamp = info.event.start ? info.event.start.getTime() : null;
+                // FullCalendar的end是不包含的，所以需要减1天得到实际结束日期
+                let endTimestamp = null;
+                if (info.event.end) {
+                    const actualEndDate = new Date(info.event.end);
+                    actualEndDate.setDate(actualEndDate.getDate() - 1);
+                    endTimestamp = actualEndDate.getTime();
+                }
+                
+                let success = true;
+                if (startTimestamp && startColId) {
+                    success = await updateCellDate(rowId, startColId, startTimestamp) && success;
+                }
+                if (endTimestamp && endColId) {
+                    success = await updateCellDate(rowId, endColId, endTimestamp) && success;
+                }
+                
+                if (!success) {
+                    info.revert();
+                    alert('更新日期失败，已恢复');
+                }
+            }
+        });
+
+        calendar.render();
+        
+        // 修复：强制同步头部日期栏和甘特条区域的水平滚动
+        // 延迟执行以确保 FullCalendar 完全渲染
+        setTimeout(function() {
+            setupScrollSync();
+        }, 100);
+    }
+    
+    // 滚动同步相关变量（放在函数外部避免重复创建）
+    let scrollSyncSetup = false;
+    let lastHeaderScroller = null;
+    let lastBodyScroller = null;
+    let scrollSyncAttempts = 0; // 重试计数，避免无限重试
+    let scrollSyncObserver = null; // MutationObserver 的引用，确保只创建一次
+    
+    // 设置头部和内容区域的滚动同步
+    function setupScrollSync() {
+        // 找到头部滚动容器和内容滚动容器（尽量尝试多种选择器/策略以保证稳定）
+        let headerScroller = document.querySelector('.fc-timeline-header .fc-scroller') || document.querySelector('.fc-col-header .fc-scroller');
+        let bodyScroller = document.querySelector('.fc-timeline-body .fc-scroller') || document.querySelector('.fc-timegrid-cols .fc-scroller');
+
+        // 回退：在日历内寻找所有可水平滚动的容器，取最上方作为 header，最下方作为 body
+        if (!headerScroller || !bodyScroller) {
+            const scs = Array.from(document.querySelectorAll('#calendar .fc-scroller'))
+                .filter(s => s.scrollWidth > s.clientWidth + 2); // 有实际可横向滚动的容器
+            if (scs.length >= 2) {
+                scs.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+                headerScroller = headerScroller || scs[0];
+                bodyScroller = bodyScroller || scs[scs.length - 1];
+            }
+        }
+
+        if (!headerScroller || !bodyScroller) {
+            scrollSyncAttempts = (scrollSyncAttempts || 0) + 1;
+            // 如果短时间内重试次数未超过3次，继续使用短延迟重试（快速场景）
+            if (scrollSyncAttempts <= 3) {
+                console.log('滚动容器未找到，稍后重试（尝试次数', scrollSyncAttempts, ')');
+                setTimeout(setupScrollSync, 200);
+                return;
+            }
+            // 超过快速重试次数后，使用 MutationObserver 监听 '#calendar' 区域，出现 scroller 时绑定一次
+            if (!scrollSyncObserver) {
+                try {
+                    const calendarEl = document.getElementById('calendar');
+                    if (calendarEl && 'MutationObserver' in window) {
+                        scrollSyncObserver = new MutationObserver((mutations, obs) => {
+                            const found = document.querySelector('.fc-timeline-header .fc-scroller') || document.querySelector('.fc-timeline-body .fc-scroller') || document.querySelectorAll('#calendar .fc-scroller').length > 0;
+                            if (found) {
+                                try { obs.disconnect(); } catch (e) {}
+                                scrollSyncObserver = null;
+                                // 下一轮立即尝试绑定
+                                setTimeout(setupScrollSync, 50);
+                            }
+                        });
+                        scrollSyncObserver.observe(calendarEl, { childList: true, subtree: true });
+                        console.log('滚动容器未找到，已启动 MutationObserver 等待 DOM 更新');
+                    } else {
+                        console.warn('滚动容器未找到，也无法使用 MutationObserver，已放弃');
+                    }
+                } catch (e) {
+                    console.warn('尝试建立 MutationObserver 时出错，已放弃', e);
+                }
+            }
+            return;
+        }
+        // 找到后重置重试计数并断开观察器（如果存在）
+        scrollSyncAttempts = 0;
+        if (scrollSyncObserver) {
+            try { scrollSyncObserver.disconnect(); } catch (e) {}
+            scrollSyncObserver = null;
+        }
+        
+        // 如果是相同的容器元素，说明已经设置过了
+        if (scrollSyncSetup && headerScroller === lastHeaderScroller && bodyScroller === lastBodyScroller) {
+            return;
+        }
+        
+        // 记录当前容器，用于后续比较
+        lastHeaderScroller = headerScroller;
+        lastBodyScroller = bodyScroller;
+        scrollSyncSetup = true;
+        
+        let isSyncing = false;
+        let scrollEndTimer = null;
+        
+        // 同步函数 - 强制两个容器的 scrollLeft 一致
+        function syncScroll(source, target) {
+            if (isSyncing) return;
+            isSyncing = true;
+            
+            // 使用 requestAnimationFrame 确保在下一帧同步，避免抖动
+            requestAnimationFrame(function() {
+                target.scrollLeft = source.scrollLeft;
+                isSyncing = false;
+            });
+        }
+        
+        // 滚动结束处理
+        function onScrollEnd() {
+            clearTimeout(scrollEndTimer);
+            scrollEndTimer = setTimeout(function() {
+                // 滚动停止后，强制同步到内容区域的位置
+                if (headerScroller && bodyScroller) {
+                    headerScroller.scrollLeft = bodyScroller.scrollLeft;
+                }
+            }, 150);
+        }
+        
+        // 使用带标识的事件监听器，便于管理
+        function headerScrollHandler() {
+            syncScroll(headerScroller, bodyScroller);
+            onScrollEnd();
+        }
+        
+        function bodyScrollHandler() {
+            syncScroll(bodyScroller, headerScroller);
+            onScrollEnd();
+        }
+        
+        // 移除旧监听器（如果存在）并添加新监听器
+        headerScroller.removeEventListener('scroll', headerScroller._syncHandler);
+        bodyScroller.removeEventListener('scroll', bodyScroller._syncHandler);
+        
+        headerScroller._syncHandler = headerScrollHandler;
+        bodyScroller._syncHandler = bodyScrollHandler;
+        
+        headerScroller.addEventListener('scroll', headerScrollHandler, { passive: true });
+        bodyScroller.addEventListener('scroll', bodyScrollHandler, { passive: true });
+        
+        console.log('滚动同步已设置');
+    }
+
+        
+
+    // ==========================================
+    // 数据获取与刷新
+    // ==========================================
+    async function refreshData() {
+        clearError();
+        // 每次刷新时确认一次宿主主题（仅一次性检测，不进行持续观察）
+        try { detectSiyuanTheme(); } catch (e) { if (DEBUG) console.warn('刷新时主题检测失败:', e); }
+        // Profiling start
+        if (DEBUG_PROFILING) { window._refreshPerfStart = performance.now(); }
+
+        try {
+            const calendarEl = document.getElementById('calendar');
+            const databaseId = calendarEl?.dataset?.blockId || '';
+            
+            if (!databaseId) {
+                showError('请输入数据库块ID');
+                return;
+            }
+            
+            // 使用思源API获取数据库视图数据
+            const response = await fetch('/api/av/renderAttributeView', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: databaseId,
+                    viewID: undefined  // 使用默认视图
+                })
+            });
+
+            if (!response.ok) {
+                showError(`网络错误: ${response.status}`);
+                return;
+            }
+
+            const result = await response.json();
+            
+            if (result.code !== 0) {
+                showError('获取数据库数据失败: ' + (result.msg || '未知错误'));
+                return;
+            }
+            
+            if (DEBUG) console.log('数据库数据:', result.data);
+            if (DEBUG_PROFILING) console.log('refreshData - rows:', view.rows.length, 'cols:', view.columns.length);
+
+            const resources = [];
+            const events = [];
+
+            // 解析数据库结构
+            const view = result.data.view;
+            if (!view || !view.columns || !view.rows) {
+                showError('数据库格式错误');
+                return;
+            }
+
+            // 创建列映射
+            const columnMap = {};
+            view.columns.forEach(col => {
+                columnMap[col.id] = col;
+            });
+
+            console.log('列信息:', view.columns.map(c => c.name));
+
+            // 查找关键列
+            const findColumn = (names) => {
+                return view.columns.find(col => names.includes(col.name));
+            };
+
+            const nameCol = findColumn(['TODO', '项目内容', '项目名称', '标题', 'headline']);
+            const statusCol = findColumn(['状态', 'status']);
+            const startCol = findColumn(['开始日', '开始时间', '开始日期', 'start']);
+            const endCol = findColumn(['截止日', '截止时间', '截止日期', 'end']);
+
+            // 保存数据库和列ID供更新使用
+            avId = result.data.id;
+            currentDatabaseId = databaseId;
+            statusColId = statusCol?.id || '';
+            startColId = startCol?.id || '';
+            endColId = endCol?.id || '';
+            
+            // 保存状态选项
+            if (statusCol && statusCol.options) {
+                statusOptions = statusCol.options;
+            }
+
+            // 从数据库中获取状态列的选项和颜色
+            const statusColorMap = {};
+            availableStatuses = [];  // 重置状态列表
+            
+            // 思源数据库标准14色配色方案（索引 1-14）
+            const siyuanColorMap = {
+                1: '#FF5252',   // 鲜红 (Fluorescent Red)
+                2: '#FF7043',   // 亮橙红 (Vivid Coral)
+                3: '#FF4081',   // 荧光粉 (Hot Pink)
+                4: '#9735ed',   // 电光紫 (Electric Purple)
+                5: '#29B6F6',   // 亮天蓝 (Vivid Sky Blue)
+                6: '#18FFFF',   // 青湖蓝 (Cyan Accent)
+                7: '#3EC300',   // 荧光绿 (Neon Green)
+                8: '#f8c421',   // 柠檬黄 (Lemon Yellow)
+                9: '#FFD740',   // 亮金黄 (Sunshine Gold)
+                10: '#FFAB40',  // 亮琥珀 (Vivid Amber)
+                11: '#8D6E63',  // 暖褐 (Warm Brown)
+                12: '#BDBDBD',  // 银灰 (Silver Grey)
+                13: '#616161',  // 深灰 (Dark Grey)
+                14: '#212121',  // 墨黑 (Jet Black)
+            };
+            
+            // 默认循环颜色（当超出14色时使用）
+            const defaultColors = Object.values(siyuanColorMap);
+            
+            if (statusCol && statusCol.options) {
+                console.log('状态列完整选项数据:', JSON.stringify(statusCol.options, null, 2));
+                statusCol.options.forEach((option, index) => {
+                    const statusName = option.name;
+                    availableStatuses.push(statusName);  // 记录可用状态
+                    
+                    // 优先使用用户自定义颜色
+                    if (customColorMap[statusName]) {
+                        statusColorMap[statusName] = customColorMap[statusName];
+                        console.log(`使用自定义颜色 "${statusName}": ${customColorMap[statusName]}`);
+                        return;
+                    }
+                    
+                    let color = '#3788d8';  // 默认蓝色
+                    
+                    console.log(`处理状态 "${statusName}":`, option);
+                    
+                    // 优先使用 option 中的实际颜色字段
+                    if (option.color !== undefined && option.color !== null) {
+                        let colorValue = option.color;
+                        console.log(`  颜色原始值:`, colorValue, '类型:', typeof colorValue);
+                        
+                        // 如果是字符串，尝试转换为数字（如 "#5" -> 5）
+                        if (typeof colorValue === 'string') {
+                            colorValue = colorValue.replace('#', '').trim();
+                            const colorNum = parseInt(colorValue, 10);
+                            if (!isNaN(colorNum)) {
+                                colorValue = colorNum;
+                                console.log(`  转换为数字:`, colorValue);
+                            }
+                        }
+                        
+                        if (typeof colorValue === 'number') {
+                            // 数字ID，从预设映射中获取，超出范围则循环使用
+                            color = siyuanColorMap[colorValue];
+                            if (!color) {
+                                // 超出预设范围（>14），使用循环颜色
+                                const colorIndex = ((colorValue - 1) % 14) + 1;
+                                color = siyuanColorMap[colorIndex];
+                            }
+                            console.log(`  从预设映射获取颜色 [${colorValue}]: ${color}`);
+                        } else if (typeof colorValue === 'string') {
+                            // 完整的颜色字符串
+                            if (colorValue.startsWith('#') && colorValue.length >= 6) {
+                                color = colorValue;
+                                console.log(`  使用完整颜色值: ${color}`);
+                            } else if (colorValue.startsWith('var(')) {
+                                // CSS 变量，使用默认色
+                                color = defaultColors[index % defaultColors.length];
+                            } else {
+                                color = defaultColors[index % defaultColors.length];
+                            }
+                        }
+                    } else {
+                        // 没有颜色信息，使用索引循环分配
+                        color = defaultColors[index % defaultColors.length];
+                        console.log(`  使用默认循环颜色 [${index}]: ${color}`);
+                    }
+                    
+                    statusColorMap[statusName] = color;
+                    console.log(`  "${statusName}" 最终映射颜色: ${color}`);
+                });
+                console.log('最终状态颜色映射:', statusColorMap);
+                
+                // 保存数据库颜色映射供配置面板使用
+                databaseColorMap = {...statusColorMap};
+            } else {
+                console.warn('未找到状态列的选项配置');
+            }
+
+            if (!nameCol) {
+                showError('未找到项目名称列（支持：TODO、项目内容、项目名称、标题）');
+                return;
+            }
+
+            console.log(`找到列: 名称=${nameCol?.name}, 状态=${statusCol?.name}, 开始=${startCol?.name}, 截止=${endCol?.name}`);
+
+            // 处理每一行
+            view.rows.forEach((row, index) => {
+                try {
+                            if (DEBUG) console.log(`处理行 ${index}:`, row);
+                    // 获取单元格值
+                    const getCellValue = (colId) => {
+                        const cell = row.cells.find(c => c.value?.keyID === colId);
+                        return cell?.value;
+                    };
+
+                    // 行ID（用于API更新）- 这是数据库内部的行ID
+                    const rowId = row.id;
+                    
+                    // 项目名称
+                    const nameCell = getCellValue(nameCol.id);
+                    let projectName = nameCell?.block?.content || nameCell?.text?.content || `项目${index + 1}`;
+                    console.log(`原始项目名称: "${projectName}"`);
+                    // 删除所有标签（如 #1#, #数据库名# 等，匹配 #任意内容# 格式），使用全局替换
+                    projectName = projectName.replace(/#[^#]+#/g, '').trim();
+                    console.log(`处理后项目名称: "${projectName}"`);
+                    const blockId = nameCell?.block?.id || `temp_${index}`;
+
+                    // 状态 - 处理单选类型
+                    const statusCell = getCellValue(statusCol?.id);
+                    console.log(`行 ${index} 状态单元格原始数据:`, statusCell);
+                    
+                    let status = '未知';
+                    let statusColor = '#3788d8';
+                    
+                    if (statusCell) {
+                        // 检查所有可能的状态字段
+                        if (statusCell.mSelect && statusCell.mSelect.length > 0) {
+                            status = statusCell.mSelect[0].content;
+                            console.log(`从 mSelect 获取状态: "${status}"`);
+                        } else if (statusCell.text && statusCell.text.content) {
+                            status = statusCell.text.content;
+                            console.log(`从 text 获取状态: "${status}"`);
+                        } else {
+                            console.warn(`状态单元格格式未知:`, statusCell);
+                        }
+                        
+                        // 优先从数据库列配置中获取颜色
+                        if (statusColorMap[status]) {
+                            statusColor = statusColorMap[status];
+                            console.log(`从颜色映射获取 "${status}" 颜色: ${statusColor}`);
+                        } else {
+                            console.warn(`颜色映射中未找到状态 "${status}"，可用状态:`, Object.keys(statusColorMap));
+                            
+                            // 尝试使用单元格中的颜色
+                            if (statusCell.mSelect && statusCell.mSelect[0] && statusCell.mSelect[0].color) {
+                                let cellColor = statusCell.mSelect[0].color;
+                                console.log(`单元格原始颜色:`, cellColor, '类型:', typeof cellColor);
+                                
+                                if (typeof cellColor === 'number') {
+                                    statusColor = '#' + cellColor.toString(16).padStart(6, '0');
+                                } else if (typeof cellColor === 'string') {
+                                    if (cellColor.startsWith('#')) {
+                                        if (cellColor.length < 7) {
+                                            statusColor = '#' + cellColor.substring(1).padStart(6, '0');
+                                        } else {
+                                            statusColor = cellColor;
+                                        }
+                                    } else {
+                                        statusColor = '#' + cellColor.padStart(6, '0');
+                                    }
+                                } else {
+                                    statusColor = '#3788d8';
+                                }
+                                console.log(`从单元格获取最终颜色: ${statusColor}`);
+                            }
+                        }
+                    } else {
+                        console.warn(`行 ${index} 未找到状态单元格`);
+                    }
+
+                    console.log(`行 ${index} 最终结果 - 项目: ${projectName}, 状态: "${status}", 颜色: ${statusColor}`);
+
+                    // 过滤屏蔽状态
+                    if (ignoreStatuses.includes(status)) {
+                        return;
+                    }
+
+                    // 日期
+                    const startCell = getCellValue(startCol?.id);
+                    const endCell = getCellValue(endCol?.id);
+                    
+                    const startDate = startCell?.date?.content ? new Date(parseInt(startCell.date.content)) : null;
+                    const endDate = endCell?.date?.content ? new Date(parseInt(endCell.date.content)) : null;
+
+                    // 没有日期的项目不显示
+                    if (!startDate && !endDate) {
+                        console.log(`跳过无日期项目: ${projectName}`);
+                        return;
+                    }
+
+                    if (DEBUG) console.log(`添加项目: ${projectName}, 状态=${status}, 颜色=${statusColor}, 开始=${startDate}, 截止=${endDate}, rowId=${rowId}`);
+
+                    // 构建资源 - 使用rowId作为唯一标识符（用于API调用）
+                    resources.push({
+                        id: rowId,
+                        title: projectName
+                        // 注意：eventColor 不是资源的属性，应该在 event 上设置
+                    });
+
+                    // 构建事件 - 使用rowId作为事件的关联ID
+                    const eventStart = startDate || endDate;
+                    // 结束日期+1天，使甘特图覆盖完整的最后一天（FullCalendar的end是不包含的）
+                    const eventEndDate = endDate || startDate;
+                    const eventEndPlusOne = new Date(eventEndDate);
+                    eventEndPlusOne.setDate(eventEndPlusOne.getDate() + 1);
+                    
+                    const eventObj = {
+                        id: rowId + "_event",
+                        resourceId: rowId,
+                        title: status,
+                        start: formatDate(eventStart),
+                        end: formatDate(eventEndPlusOne),
+                        allDay: true,  // 全天事件，不显示时间
+                        backgroundColor: statusColor,
+                        borderColor: statusColor,
+                        color: statusColor,  // 添加 color 属性
+                        extendedProps: {
+                            textColor: '#ffffff',
+                            rowId: rowId  // 保存rowId供API调用使用
+                        }
+                    };
+                    
+                    if (DEBUG) console.log(`创建事件:`, eventObj);
+                    events.push(eventObj);
+                } catch (rowError) {
+                    console.error(`处理行 ${index} 失败:`, rowError);
+                }
+            });
+
+            // 更新日历
+            calendar.getResources().forEach(resource => resource.remove());
+            calendar.getEvents().forEach(event => event.remove());
+            
+            resources.forEach(r => calendar.addResource(r));
+            events.forEach(e => calendar.addEvent(e));
+
+            if (DEBUG) console.log(`加载了 ${resources.length} 个项目`);
+            if (DEBUG_PROFILING) console.log('refreshData time:', performance.now() - (window._refreshPerfStart || performance.now()), 'ms');
+
+        } catch (e) {
+            console.error("获取数据异常:", e);
+            showError("获取数据异常: " + e.message);
+        }
+    }
+
+    // 格式化日期为 YYYY-MM-DD
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // 状态颜色映射
+    function getColorByStatus(status) {
+        if (!status) return '#3788d8';
+        if (status.includes('已完成') || status.includes('完成')) return '#28a745';
+        if (status.includes('进行中') || status.includes('进行')) return '#ffc107';
+        if (status.includes('未开始')) return '#6c757d';
+        if (status.includes('已延期') || status.includes('延迟') || status.includes('延期')) return '#dc3545';
+        if (status.includes('已取消') || status.includes('放弃')) return '#6c757d';
+        return '#3788d8';
+    }
+
+    // 显示错误
+    function showError(msg) {
+        // 在标题后显示错误信息
+        let errorEl = document.getElementById('gantt-error');
+        if (!errorEl) {
+            // 创建错误元素并插入到标题后
+            const titleEl = document.querySelector('.fc-toolbar-title');
+            if (titleEl && titleEl.parentElement) {
+                errorEl = document.createElement('span');
+                errorEl.id = 'gantt-error';
+                titleEl.parentElement.appendChild(errorEl);
+            }
+        }
+        if (errorEl) {
+            errorEl.textContent = msg;
+        }
+    }
+
+    // 清除错误
+    function clearError() {
+        const errorEl = document.getElementById('gantt-error');
+        if (errorEl) {
+            errorEl.textContent = '';
+        }
+    }
+
+    // ==========================================
+    // 主题检测与应用（绑定到 SiYuan 的亮色/暗色模式）
+    // ==========================================
+    function applyTheme(theme) {
+        const isLight = theme === 'light';
+        try {
+            // 将主题类同时应用到 html、body 以及日历容器，确保 FullCalendar 的各子元素都能被覆盖样式
+            document.documentElement.classList.toggle('gantt-theme-light', isLight);
+            try { document.body.classList.toggle('gantt-theme-light', isLight); } catch (e) {}
+            try {
+                const calEl = document.getElementById('calendar');
+                if (calEl) calEl.classList.toggle('gantt-theme-light', isLight);
+            } catch (e) {}
+            console.log('应用甘特图主题:', theme);
+            // 尝试刷新 FullCalendar 布局以使样式生效
+            try { if (calendar && typeof calendar.updateSize === 'function') calendar.updateSize(); } catch (e) {}
+        } catch (e) {
+            console.warn('应用主题失败:', e);
+        }
+    }
+
+    // 查找最近可用于检测背景颜色的祖先元素（从 iframe 的宿主向上查找）
+    function findHostAncestor() {
+        try {
+            let el = window.frameElement || null;
+            if (!el) return null;
+            // 向上查找直到根节点，寻找带有非透明背景的元素
+            let p = el.parentElement;
+            while (p) {
+                const bg = getComputedStyle(p).backgroundColor;
+                if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') return p;
+                p = p.parentElement;
+            }
+            return el.parentElement || el;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function detectSiyuanTheme() {
+        try {
+            // 一次性检测：优先读取宿主配置（若同源可访问），仅应用当前值
+            const parentWin = (window.parent && window.parent !== window) ? window.parent : (window.top || window);
+            try {
+                if (parentWin && parentWin.siyuan && parentWin.siyuan.config && parentWin.siyuan.config.appearance) {
+                    const cfg = parentWin.siyuan.config.appearance;
+                    const mode = cfg.mode; // 0: light, 1: dark, 2: follow OS
+                    let theme = 'dark';
+                    if (mode === 0) theme = 'light';
+                    else if (mode === 1) theme = 'dark';
+                    else if (mode === 2) {
+                        const osDark = parentWin.matchMedia && parentWin.matchMedia('(prefers-color-scheme: dark)').matches;
+                        theme = osDark ? 'dark' : 'light';
+                    }
+                    console.log('detectSiyuanTheme: applied from parent.siyuan.config.appearance ->', theme);
+                    applyTheme(theme);
+                    return;
+                }
+            } catch (e) {
+                // 访问 parent.siyuan 可能跨域或不存在
+                console.warn('detectSiyuanTheme: cannot read parent.siyuan.config.appearance:', e);
+            }
+
+            // 如果同源，尝试读取父文档的根或 body 背景色（更可靠）
+            try {
+                const parentDoc = (parentWin && parentWin.document) ? parentWin.document : null;
+                if (parentDoc) {
+                    const computedBg = parentWin.getComputedStyle(parentDoc.documentElement).backgroundColor || parentWin.getComputedStyle(parentDoc.body).backgroundColor || '';
+                    if (computedBg) {
+                        const nums = computedBg.match(/\d+/g);
+                        if (nums && nums.length >= 3) {
+                            const r = parseInt(nums[0], 10), g = parseInt(nums[1], 10), b = parseInt(nums[2], 10);
+                            const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+                            const theme = luminance > 0.6 ? 'light' : 'dark';
+                            console.log('detectSiyuanTheme: applied from parent document background ->', theme);
+                            applyTheme(theme);
+                            return;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('detectSiyuanTheme: cannot read parent document background:', e);
+            }
+
+            // 回退：读取宿主可见祖先元素的背景亮度并一次性应用
+            const host = findHostAncestor();
+            if (!host) return;
+            try {
+                const bg = getComputedStyle(host).backgroundColor || '';
+                const nums = bg.match(/\d+/g);
+                if (!nums || nums.length < 3) return;
+                const r = parseInt(nums[0], 10), g = parseInt(nums[1], 10), b = parseInt(nums[2], 10);
+                const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+                const theme = luminance > 0.6 ? 'light' : 'dark';
+                console.log('detectSiyuanTheme: applied from host ancestor background ->', theme);
+                applyTheme(theme);
+            } catch (e) {
+                console.warn('计算宿主背景色失败:', e);
+            }
+        } catch (e) {
+            console.warn('检测 SiYuan 主题失败:', e);
+        }
+    }
+
+</script>
+</body>
+</html>
