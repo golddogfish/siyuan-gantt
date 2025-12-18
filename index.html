@@ -685,7 +685,8 @@
 
     // Lightweight profiling helpers
     function profileStart(label) {
-        if (!DEBUG_PROFILING || typeof performance === 'undefined') return null;
+        const profilingEnabled = (typeof DEBUG_PROFILING !== 'undefined' && DEBUG_PROFILING) || (typeof window !== 'undefined' && window.DEBUG_PROFILING);
+        if (!profilingEnabled || typeof performance === 'undefined') return null;
         return {label, t: performance.now(), mem: (performance && performance.memory) ? performance.memory.usedJSHeapSize : null};
     }
     function profileEnd(ctx) {
@@ -699,20 +700,26 @@
 
     // Run multiple refreshes to gather timing/memory samples. Usage: from devtools run `runProfile({iterations:10, delay:200})`
     async function runProfile({iterations = 5, delay = 200} = {}) {
-        if (!DEBUG_PROFILING) console.warn('runProfile: DEBUG_PROFILING is disabled; enable it for memory measurements.');
+        const profilingEnabled = (typeof DEBUG_PROFILING !== 'undefined' && DEBUG_PROFILING) || (typeof window !== 'undefined' && window.DEBUG_PROFILING);
+        if (!profilingEnabled) console.warn('runProfile: DEBUG_PROFILING is disabled; enable it for memory measurements.');
         const times = [];
+        const mems = [];
         for (let i = 0; i < iterations; i++) {
             const t0 = performance.now();
             await refreshData();
             const t1 = performance.now();
             times.push(t1 - t0);
+            mems.push(performance && performance.memory ? performance.memory.usedJSHeapSize : null);
             // small delay to allow GC/other work to settle
             await new Promise(r => setTimeout(r, delay));
         }
         const sum = times.reduce((a, b) => a + b, 0);
         const avg = (times.length > 0) ? (sum / times.length).toFixed(2) : '0';
         console.info(`[PROFILE_RUN] iterations=${iterations}, avg=${avg}ms, times=[${times.map(t=>t.toFixed(2)).join(', ')}]`);
-        return {times, avg};
+        if (mems[0] !== null) {
+            console.info(`[PROFILE_RUN] heapStart=${Math.round(mems[0]/1024)}KB heapEnd=${Math.round(mems[mems.length-1]/1024)}KB diff=${Math.round((mems[mems.length-1]-mems[0])/1024)}KB`);
+        }
+        return {times, mems, avg};
     }
     // expose for manual invocation
     window.runProfile = runProfile;
@@ -1552,17 +1559,27 @@
             if (DEBUG) console.log('数据库数据:', result.data);
             if (DEBUG_PROFILING) console.log('refreshData - rows:', view.rows.length, 'cols:', view.columns.length);
 
-            _reusableResources.length = 0;
-            _reusableEvents.length = 0;
-            const resources = _reusableResources;
-            const events = _reusableEvents;
-
             // 解析数据库结构
             const view = result.data.view;
             if (!view || !view.columns || !view.rows) {
                 showError('数据库格式错误');
                 return;
             }
+
+            // 预分配并重用容器以减少临时对象与分配（最大化性能）
+            const maxPossible = view.rows.length || 0;
+            // 确保池的容量
+            for (let i = _reusableResources.length; i < maxPossible; i++) {
+                _reusableResources.push({ id: '', title: '' });
+            }
+            for (let i = _reusableEvents.length; i < maxPossible; i++) {
+                _reusableEvents.push({ id: '', resourceId: '', title: '', start: '', end: '', allDay: true, backgroundColor: '', borderColor: '', color: '', extendedProps: { textColor: '#ffffff', rowId: '' } });
+            }
+            let resourceCount = 0;
+            let eventCount = 0;
+            const resources = _reusableResources;
+            const events = _reusableEvents;
+
 
             // 创建列映射
             const columnMap = {};
@@ -1793,67 +1810,98 @@
 
                     if (DEBUG) console.log(`添加项目: ${projectName}, 状态=${status}, 颜色=${statusColor}, 开始=${startDate}, 截止=${endDate}, rowId=${rowId}`);
 
-                    // 构建资源 - 使用rowId作为唯一标识符（用于API调用）
-                    resources.push({
-                        id: rowId,
-                        title: projectName
-                        // 注意：eventColor 不是资源的属性，应该在 event 上设置
-                    });
+                    // 构建资源 - 使用重用对象并就地赋值以减少分配
+                    const r = resources[resourceCount];
+                    r.id = rowId;
+                    r.title = projectName;
+                    resourceCount++;
 
-                    // 构建事件 - 使用rowId作为事件的关联ID
+                    // 构建事件 - 使用重用对象并就地赋值
                     const eventStart = startDate || endDate;
                     // 结束日期+1天，使甘特图覆盖完整的最后一天（FullCalendar的end是不包含的）
                     const eventEndDate = endDate || startDate;
                     const eventEndPlusOne = new Date(eventEndDate);
                     eventEndPlusOne.setDate(eventEndPlusOne.getDate() + 1);
                     
-                    const eventObj = {
-                        id: rowId + "_event",
-                        resourceId: rowId,
-                        title: status,
-                        start: formatDate(eventStart),
-                        end: formatDate(eventEndPlusOne),
-                        allDay: true,  // 全天事件，不显示时间
-                        backgroundColor: statusColor,
-                        borderColor: statusColor,
-                        color: statusColor,  // 添加 color 属性
-                        extendedProps: {
-                            textColor: '#ffffff',
-                            rowId: rowId  // 保存rowId供API调用使用
-                        }
-                    };
-                    
-                    if (DEBUG) console.log(`创建事件:`, eventObj);
-                    events.push(eventObj);
+                    const e = events[eventCount];
+                    e.id = rowId + "_event";
+                    e.resourceId = rowId;
+                    e.title = status;
+                    e.start = formatDate(eventStart);
+                    e.end = formatDate(eventEndPlusOne);
+                    e._startTs = eventStart.getTime();
+                    e._endTs = eventEndPlusOne.getTime();
+                    e.allDay = true;
+                    e.backgroundColor = statusColor;
+                    e.borderColor = statusColor;
+                    e.color = statusColor;
+                    e.extendedProps = e.extendedProps || {};
+                    e.extendedProps.textColor = '#ffffff';
+                    e.extendedProps.rowId = rowId;
+                    eventCount++;
                 } catch (rowError) {
                     console.error(`处理行 ${index} 失败:`, rowError);
                 }
             });
 
-            // 高效更新：使用 setOption 替换 resources 与 events，交由 FullCalendar 内部 diff 算法高效处理（先 resources 再 events）
-            if (calendar.batchRendering) {
-                calendar.batchRendering(() => {
+            // 将资源与事件的长度调整为实际使用的数量
+            resources.length = resourceCount;
+            events.length = eventCount;
+
+            // 将资源/事件保存为全局池，并使用惰性加载（按视图范围过滤）以减少 DOM 渲染压力
+            window._fullEventPool = events.slice(0, eventCount);
+            window._fullResourcePool = resources.slice(0, resourceCount);
+
+            try {
+                // 移除旧的事件源
+                calendar.getEventSources().forEach(s => s.remove());
+
+                // 添加按需事件源（FullCalendar 将在视图/日期范围变化时调用）
+                calendar.addEventSource(function(fetchInfo, successCallback, failureCallback) {
                     try {
-                        calendar.setOption('resources', resources);
-                        calendar.setOption('events', events);
+                        const sTs = fetchInfo.start.getTime();
+                        const eTs = fetchInfo.end.getTime();
+                        const out = [];
+                        const pool = window._fullEventPool;
+                        for (let i = 0; i < pool.length; i++) {
+                            const ev = pool[i];
+                            // use numeric timestamps to avoid Date allocation
+                            if (ev._endTs > sTs && ev._startTs < eTs) out.push(ev);
+                        }
+                        successCallback(out);
                     } catch (err) {
-                        // 回退到原始方法以保证兼容性
-                        calendar.getResources().forEach(resource => resource.remove());
-                        calendar.getEvents().forEach(event => event.remove());
-                        resources.forEach(r => calendar.addResource(r));
-                        events.forEach(e => calendar.addEvent(e));
+                        if (failureCallback) failureCallback(err);
                     }
                 });
-            } else {
-                try {
-                    calendar.setOption('resources', resources);
-                    calendar.setOption('events', events);
-                } catch (err) {
-                    calendar.getResources().forEach(resource => resource.remove());
-                    calendar.getEvents().forEach(event => event.remove());
-                    resources.forEach(r => calendar.addResource(r));
-                    events.forEach(e => calendar.addEvent(e));
-                }
+
+                // 设置资源为函数（按视图时间窗口过滤，仅返回当前时间窗口内有事件的资源）
+                calendar.setOption('resources', function(fetchInfo, successCallback) {
+                    try {
+                        const sTs = fetchInfo.start.getTime();
+                        const eTs = fetchInfo.end.getTime();
+                        const rids = new Set();
+                        const pool = window._fullEventPool;
+                        for (let i = 0; i < pool.length; i++) {
+                            const ev = pool[i];
+                            if (ev._endTs > sTs && ev._startTs < eTs) rids.add(ev.resourceId);
+                        }
+                        const res = window._fullResourcePool.filter(r => rids.has(r.id));
+                        successCallback(res);
+                    } catch (err) {
+                        successCallback([]);
+                    }
+                });
+
+                // 触发首轮加载
+                calendar.refetchEvents();
+                // 强制资源刷新（如支持）
+                if (typeof calendar.refetchResources === 'function') calendar.refetchResources();
+            } catch (err) {
+                // 回退到直接替换（兼容性）
+                calendar.getResources().forEach(resource => resource.remove());
+                calendar.getEvents().forEach(event => event.remove());
+                resources.forEach(r => calendar.addResource(r));
+                events.forEach(e => calendar.addEvent(e));
             }
 
             if (DEBUG) console.log(`加载了 ${resources.length} 个项目`);
