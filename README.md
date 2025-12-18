@@ -76,6 +76,11 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 
 ## Changelog
 
+### v1.3.4 (2025-12-18)
+
+- ✅ Merge: v1.3.4 (from branch v1.3.2) merged into `main` and release package added at `releases/v1.3.4/package.zip`.
+- ⚡ Minor: Packaging and documentation updates; includes prior perf and production-safety fixes.
+
 ### v1.3.2 (2025-12-18)
 
 - 🔧 **Perf**: Added profiling helpers and `runProfile` harness; replaced direct remove/add calendar updates with `calendar.setOption('resources', ...)` and `calendar.setOption('events', ...)` to leverage FullCalendar's internal diffing (significant rendering/perf improvements for large datasets).
