@@ -1,0 +1,32 @@
+{
+  "name": "siyuan-gantt",
+  "author": "goldfish",
+  "url": "https://github.com/golddogfish/siyuan-gantt",
+  "version": "1.4.1",
+  "minAppVersion": "2.10.0",
+  "displayName": {
+    "default": "Gantt Chart",
+    "zh_CN": "甘特�?
+  },
+  "description": {
+    "default": "A Gantt chart widget for SiYuan Note, visualizing project timelines from database views.",
+    "zh_CN": "思源笔记甘特图挂件，从数据库视图可视化项目时间线�?
+  },
+  "readme": {
+    "default": "README.md",
+    "zh_CN": "README_zh_CN.md"
+  },
+  "funding": {
+    "custom": []
+  },
+  "keywords": [
+    "gantt",
+    "甘特�?,
+    "project",
+    "项目管理",
+    "timeline",
+    "时间�?,
+    "database",
+    "数据�?
+  ]
+}
