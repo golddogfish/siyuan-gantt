@@ -6,11 +6,11 @@
   "minAppVersion": "2.10.0",
   "displayName": {
     "default": "Gantt Chart",
-    "zh_CN": "甘特�?
+    "zh_CN": "甘特图"
   },
   "description": {
     "default": "A Gantt chart widget for SiYuan Note, visualizing project timelines from database views.",
-    "zh_CN": "思源笔记甘特图挂件，从数据库视图可视化项目时间线�?
+    "zh_CN": "思源笔记甘特图挂件，从数据库视图可视化项目时间线。"
   },
   "readme": {
     "default": "README.md",
@@ -21,12 +21,12 @@
   },
   "keywords": [
     "gantt",
-    "甘特�?,
+    "甘特图",
     "project",
     "项目管理",
     "timeline",
-    "时间�?,
+    "时间线",
     "database",
-    "数据�?
+    "数据库"
   ]
 }
