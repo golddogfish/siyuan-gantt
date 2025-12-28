@@ -1,0 +1,12 @@
+{
+  "version": "1.3.5",
+  "widgetId": "20251216214532-4lwge7n",
+  "blockId": "20251216214116-96xxwtd",
+  "customColors": {},
+  "ignoreStatuses": [],
+  "createdAt": "2025-12-28T09:16:40.831Z",
+  "updatedAt": "2025-12-28T09:16:40.831Z",
+  "code": 404,
+  "msg": "GetFileAttributesEx D:\\siyuan\\data\\widgets\\siyuan-gantt\\gantt-config-20251216214532-4lwge7n.json: The system cannot find the file specified.",
+  "data": null
+}

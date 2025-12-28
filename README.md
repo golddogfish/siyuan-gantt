@@ -29,7 +29,12 @@ A Gantt chart visualization widget for SiYuan Note, displaying project timelines
 
 #### Option A: Use Provided Template (Easiest)
 
-Download [`甘特图模板.sy.zip`](https://github.com/golddogfish/siyuan-gantt/raw/main/甘特图模板.sy.zip) from this repository and import it into SiYuan Note. Ready to use immediately.
+Download the template from the repository (both Chinese and English filenames are available) and import it into SiYuan Note:
+
+- Chinese template: [`甘特图模板.sy.zip`](https://raw.githubusercontent.com/golddogfish/siyuan-gantt/main/%E7%94%98%E7%89%B9%E5%9B%BE%E6%A8%A1%E6%9D%BF.sy.zip)
+- English template: [`Gantt Chart Template.sy.zip`](https://raw.githubusercontent.com/golddogfish/siyuan-gantt/main/Gantt%20Chart%20Template.sy.zip)
+
+Import into SiYuan Note and it's ready to use.
 
 #### Option B: Use Recommended Template
 
@@ -41,7 +46,7 @@ This widget also supports the [SiYuan Note Project Management Database Template]
 
 Create a database in SiYuan Note with the following columns:
 
-- **Project Name/Title**: Name of the project (支持：TODO、项目内容、项目名称、标题、headline)
+- **Project Name/Title**: Name of the project (支持：TODO、项目内容、项目名称、标题、headline、Project List)
 - **Status**: Project status - single select type (支持：状态、status)
 - **Start Date**: Project start date (支持：开始日、开始时间、开始日期、start)
 - **End Date**: Project end date (支持：截止日、截止时间、截止日期、end)
@@ -75,6 +80,14 @@ Click the ⚙️ button in the top-right corner:
 Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt-config-{widgetId}.json`.
 
 ## Changelog
+
+### v1.4.0 (2025-12-28)
+
+- ✨ **English UI & robustness**: Added English UI support and robustness fixes to ensure toolbar and controls remain interactive after host re-renders.
+- 🔧 **Fix**: Eliminated toolbar duplication/flashing by using FullCalendar API (`calendar.setOption`) and merging existing `customButtons` to preserve click handlers; added delegated click fallback and a MutationObserver to recover from host-side re-renders.
+- 📁 **Config migration & backup**: Automatically migrates old saved configuration shapes (e.g., `customColorMap`) to the new format and creates timestamped backups before overwriting user config files.
+- 🧪 **Tests**: Added/updated Puppeteer tests (locale, toolbar navigation with transient detection, config migration test, name parsing, real DB regression tests).
+- 🔒 **Defaults**: DEBUG and profiling remain disabled by default; tests can enable page-level debugging via `TEST_DEBUG=1`.
 
 ### v1.3.4 (2025-12-18)
 
@@ -130,6 +143,30 @@ Widget configuration is automatically saved to `/data/widgets/siyuan-gantt/gantt
 - Support week and month views
 - Support custom status colors
 - Support filtering specific statuses
+
+## Development & Testing
+
+- Run the local static server and run Puppeteer tests from project root (requires Node.js):
+  - `node scripts/test_locale.js` — validates locale detection and UI translations (en/zh)
+  - `node scripts/test_toolbar_navigation.js` — verifies toolbar remains stable when navigating views (detects transient duplication)
+  - `node scripts/test_name_parse.js` — unit tests for name parsing from AV payloads
+  - `node scripts/test_real_db.js` — exercises refresh/parsing using a real AV JSON payload (see `data/`).
+  - Note: **DEBUG is disabled by default**; to enable page-level debug logs for this test set `TEST_DEBUG=1` in your shell before running the script.
+
+- Debugging in a real SiYuan environment:
+  1. Open DevTools console in SiYuan and enable debug logs: `window.DEBUG = true`.
+  2. Open the Gantt widget, switch to week/month view and click prev/next repeatedly.
+  3. To collect toolbar DOM snapshot: run `document.querySelector('.fc-toolbar').outerHTML` in Console and paste the output.
+
+- Notes:
+  - The toolbar duplication issue was fixed by using FullCalendar's API (`calendar.setOption`) instead of direct DOM `textContent` overrides to avoid render races.
+  - Tests use Puppeteer and a small local server; no external network access is required.
+
+### Config migration & backup
+
+- On load the widget now **automatically migrates and merges** any existing saved configuration into the current format (no manual reconfiguration required after upgrades). Old keys (e.g., `customColorMap`) are detected and migrated to the new shape.
+- Before overwriting a saved config the widget creates a timestamped backup at `/data/widgets/siyuan-gantt/gantt-config-<widgetId>.backup-<ts>.json` to allow rollback or inspection.
+- You can test the migration logic with: `node scripts/test_config_migration.js` (this script simulates an older config and validates it is migrated and applied).
 
 ## License
 

@@ -607,27 +607,27 @@
 </div>
 
 <div class="color-config-panel" id="colorConfigPanel">
-    <div class="color-config-header">甘特图配置</div>
+    <div class="color-config-header" data-i18n="ganttConfig">甘特图配置</div>
     
     <div class="config-section">
-        <div class="config-section-title">数据库设置</div>
+        <div class="config-section-title" data-i18n="dbSettings">数据库设置</div>
         <input id="configBlockId" type="text" class="config-input" placeholder="输入数据库块ID">
     </div>
     
     <div class="config-section">
-        <div class="config-section-title">屏蔽状态（勾选要隐藏的状态）</div>
+        <div class="config-section-title" data-i18n="ignoreNote">屏蔽状态（勾选要隐藏的状态）</div>
         <div id="ignoreStatusItems"></div>
     </div>
     
     <div class="config-section">
-        <div class="config-section-title">状态颜色配置</div>
+        <div class="config-section-title" data-i18n="statusColorConfig">状态颜色配置</div>
         <div id="colorConfigItems"></div>
     </div>
     
     <div class="color-config-buttons">
-        <button onclick="saveColorConfig()">保存并刷新</button>
-        <button onclick="resetColorConfig()">重置默认</button>
-        <button onclick="closeColorConfig()">取消</button>
+        <button onclick="saveColorConfig()" data-i18n="saveAndRefresh">保存并刷新</button>
+        <button onclick="resetColorConfig()" data-i18n="resetDefault">重置默认</button>
+        <button onclick="closeColorConfig()" data-i18n="cancel">取消</button>
     </div>
 </div>
 
@@ -822,7 +822,7 @@
             const result = await response.json();
             if (DEBUG) console.log('更新状态响应:', result);
             if (result.code !== 0) {
-                console.error('更新状态失败:', result.msg);
+                console.error(t('refreshFail') + ':', result.msg);
                 return false;
             }
             if (DEBUG) console.log('状态更新成功:', statusName);
@@ -849,10 +849,10 @@
         menuItems.innerHTML = '';
         
         if (availableStatuses.length === 0) {
-            console.warn('没有可用的状态选项');
+            console.warn(t('noStatusOptions'));
             const item = document.createElement('div');
             item.className = 'context-menu-item';
-            item.innerHTML = '<span>暂无状态选项</span>';
+            item.innerHTML = `<span>${t('noStatusOptionsSimple')}</span>`;
             menuItems.appendChild(item);
         } else {
             availableStatuses.forEach(status => {
@@ -951,65 +951,101 @@
                 refreshData();
             }
         } else {
-            alert('更新状态失败');
+            alert(t('refreshFail'));
         }
         
         closeContextMenu();
     }
 
-    // 保存配置
+    // 默认配置与版本，用于合并和迁移
+    const CONFIG_VERSION = '1.3.5';
+    const CONFIG_DEFAULTS = {
+        version: CONFIG_VERSION,
+        widgetId: null,
+        blockId: '',
+        customColors: {},
+        ignoreStatuses: [],
+        createdAt: null,
+        updatedAt: null
+    };
+
+    // 合并并迁移历史配置到当前结构
+    function migrateAndMergeConfig(existing) {
+        try {
+            // migrate old key names if present
+            if (!existing) existing = {};
+            if (existing.customColorMap && !existing.customColors) {
+                existing.customColors = existing.customColorMap;
+            }
+            // other migrations can be added here in future
+
+            const merged = Object.assign({}, CONFIG_DEFAULTS, existing);
+            merged.widgetId = widgetId || merged.widgetId;
+            merged.updatedAt = new Date().toISOString();
+            if (!merged.createdAt) merged.createdAt = merged.updatedAt;
+            merged.version = CONFIG_VERSION;
+            return merged;
+        } catch (e) {
+            if (DEBUG) console.warn('migrateAndMergeConfig failed', e);
+            return Object.assign({}, CONFIG_DEFAULTS, existing || {});
+        }
+    }
+
+    // 保存配置：改为读取已有配置并合并（避免在升级时覆盖用户设置）；保留备份以防万一
     async function saveConfig() {
         if (!widgetId) return;
-        
-        // 先删除所有旧的配置文件
+
+        const blockId = document.getElementById('configBlockId')?.value?.trim() || '';
+        const newPartial = {
+            widgetId,
+            blockId,
+            customColors: customColorMap,
+            ignoreStatuses: ignoreStatuses
+        };
+
+        const path = `/data/widgets/siyuan-gantt/gantt-config-${widgetId}.json`;
+
         try {
-            const listResponse = await fetch("http://127.0.0.1:6806/api/file/readDir", {
+            // try to fetch existing config to merge
+            let existing = null;
+            const resp = await fetch("http://127.0.0.1:6806/api/file/getFile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ path: "/data/widgets/siyuan-gantt" })
+                body: JSON.stringify({ path })
             });
-            
-            if (listResponse.ok) {
-                const listResult = await listResponse.json();
-                if (listResult.code === 0 && listResult.data) {
-                    // 查找所有 gantt-config-*.json 文件
-                    const configFiles = listResult.data.filter(file => 
-                        file.name.startsWith('gantt-config-') && file.name.endsWith('.json')
-                    );
-                    
-                    // 删除所有旧配置文件
-                    for (const file of configFiles) {
-                        await fetch("http://127.0.0.1:6806/api/file/removeFile", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ path: `/data/widgets/siyuan-gantt/${file.name}` })
-                        });
-                    }
-                    if (DEBUG) console.log(`已删除 ${configFiles.length} 个旧配置文件`);
+            if (resp.ok) {
+                try {
+                    const text = await resp.text();
+                    existing = JSON.parse(text);
+                } catch (e) {
+                    if (DEBUG) console.warn('failed to parse existing config', e);
                 }
             }
-        } catch (error) {
-            console.error('清理旧配置文件时出错:', error);
+
+            // merge + migrate
+            const finalConfig = migrateAndMergeConfig(Object.assign({}, existing || {}, newPartial));
+
+            // create a simple backup of previous config (timestamped) to aid recovery if needed
+            if (existing) {
+                try {
+                    const bakPath = `/data/widgets/siyuan-gantt/gantt-config-${widgetId}.backup-${Date.now()}.json`;
+                    const formBak = new FormData();
+                    formBak.append('path', bakPath);
+                    formBak.append('file', new Blob([JSON.stringify(existing, null, 2)], { type: 'application/json' }));
+                    await fetch('http://127.0.0.1:6806/api/file/putFile', { method: 'POST', body: formBak });
+                } catch (e) { if (DEBUG) console.warn('backup existing config failed', e); }
+            }
+
+            // write merged config
+            const formData = new FormData();
+            formData.append('path', path);
+            formData.append('file', new Blob([JSON.stringify(finalConfig, null, 2)], { type: 'application/json' }));
+            await fetch('http://127.0.0.1:6806/api/file/putFile', { method: 'POST', body: formData });
+
+            if (DEBUG) console.log(t('configSaved'));
+        } catch (e) {
+            console.error('保存配置失败', e);
         }
-        
-        // 保存新配置
-        const blockId = document.getElementById('configBlockId')?.value?.trim() || '';
-        const config = { 
-            widgetId, 
-            blockId,
-            customColors: customColorMap,  // 保存自定义颜色
-            ignoreStatuses: ignoreStatuses  // 保存屏蔽状态
-        };
-        
-        const formData = new FormData();
-        // 使用相对路径，保存在当前挂件目录下
-        formData.append("path", `/data/widgets/siyuan-gantt/gantt-config-${widgetId}.json`);
-        formData.append("file", new Blob([JSON.stringify(config)], { type: 'application/json' }));
-        
-        fetch("http://127.0.0.1:6806/api/file/putFile", { 
-            method: "POST", 
-            body: formData 
-        }).then(() => { if (DEBUG) console.log('配置已保存'); });
     }
 
     // 加载配置
@@ -1023,7 +1059,11 @@
             });
             if (response.ok) {
                 const text = await response.text();
-                const config = JSON.parse(text);
+                let configRaw = null;
+                try { configRaw = JSON.parse(text); } catch (e) { if (DEBUG) console.warn('parse config failed', e); }
+                const config = migrateAndMergeConfig(configRaw);
+
+                // apply merged configuration
                 if (config.blockId) {
                     const input = document.getElementById('configBlockId');
                     if (input) input.value = config.blockId;
@@ -1034,11 +1074,11 @@
                 }
                 if (config.customColors) {
                     customColorMap = config.customColors;
-                    console.log('加载自定义颜色:', customColorMap);
+                    if (DEBUG) console.log('加载自定义颜色:', customColorMap);
                 }
                 if (config.ignoreStatuses) {
                     ignoreStatuses = config.ignoreStatuses;
-                    console.log('加载屏蔽状态:', ignoreStatuses);
+                    if (DEBUG) console.log('加载屏蔽状态:', ignoreStatuses);
                 }
 
                 // 配置加载完成后立即刷新，确保关闭再打开窗口能恢复数据库ID
@@ -1078,7 +1118,7 @@
                 ignoreContainer.appendChild(div);
             });
         } else {
-            ignoreContainer.innerHTML = '<div style="color: #999; font-size: 12px;">请先输入数据库ID并保存</div>';
+            ignoreContainer.innerHTML = `<div style="color: #999; font-size: 12px;">${t('enterDbId')}</div>`;
         }
         
         // 生成颜色配置项
@@ -1097,11 +1137,12 @@
                 colorContainer.appendChild(div);
             });
         } else {
-            colorContainer.innerHTML = '<div style="color: #999; font-size: 12px;">请先输入数据库ID并保存</div>';
+            colorContainer.innerHTML = `<div style="color: #999; font-size: 12px;">${t('enterDbId')}</div>`;
         }
         
         document.getElementById('overlay').classList.add('show');
         document.getElementById('colorConfigPanel').classList.add('show');
+        try { applyTranslations(); } catch (e) { if (DEBUG) console.warn('applyTranslations in openColorConfig failed', e); }
     }
 
     function closeColorConfig() {
@@ -1187,9 +1228,341 @@
     // ==========================================
     // 初始化
     // ==========================================
-    document.addEventListener('DOMContentLoaded', function() {
+
+    // 语言检测与国际化支持
+    var currentLocale = 'zh-cn';
+    const UI_TEXT = {
+        'zh-cn': {
+            refresh: '刷新',
+            settings: '⚙️',
+            refreshFail: '更新状态失败',
+            configSaved: '配置已保存',
+            deletedFiles: '已删除 {n} 个旧配置文件',
+            noStatusOptions: '没有可用的状态选项',
+            noStatusOptionsSimple: '暂无状态选项',
+            ganttConfig: '甘特图配置',
+            dbSettings: '数据库设置',
+            statusColorConfig: '状态颜色配置',
+            saveAndRefresh: '保存并刷新',
+            enterDbId: '请先输入数据库ID并保存',
+            weekView: '周视图',
+            monthView: '月视图',
+            today: 'today',
+            projectList: '项目列表',
+            ignoreNote: '屏蔽状态（勾选要隐藏的状态）',
+            resetDefault: '重置默认',
+            cancel: '取消',
+            enterBlockIdPlaceholder: '输入数据库块ID',
+            missingNameColumn: '未找到项目名称列（支持：TODO、项目内容、项目名称、标题）',
+            projectIndex: '项目{n}',
+            fetchDbFail: '获取数据库数据失败: {msg}',
+            fetchException: '获取数据异常: {msg}',
+            networkError: '网络错误: {code}',
+            dbFormatError: '数据库格式错误'
+        },
+        'en': {
+            refresh: 'Refresh',
+            settings: '⚙️',
+            refreshFail: 'Failed to update status',
+            configSaved: 'Configuration saved',
+            deletedFiles: 'Deleted {n} old config files',
+            noStatusOptions: 'No available status options',
+            noStatusOptionsSimple: 'No status options',
+            ganttConfig: 'Gantt Configuration',
+            dbSettings: 'Database Settings',
+            statusColorConfig: 'Status Color Configuration',
+            saveAndRefresh: 'Save & Refresh',
+            enterDbId: 'Please enter database ID and save',
+            weekView: 'Week',
+            monthView: 'Month',
+            today: 'today',
+            projectList: 'Project List',
+            ignoreNote: 'Ignore statuses (check to hide)',
+            resetDefault: 'Reset Defaults',
+            cancel: 'Cancel',
+            enterBlockIdPlaceholder: 'Enter database block ID',
+            missingNameColumn: 'Cannot find project name column (support: TODO, project content, project name, title)',
+            projectIndex: 'Project {n}',
+            fetchDbFail: 'Failed to fetch database data: {msg}',
+            fetchException: 'Data fetch error: {msg}',
+            networkError: 'Network error: {code}',
+            dbFormatError: 'Invalid database format'
+        }
+    };
+
+    function t(key, params) {
+        const map = UI_TEXT[currentLocale] || UI_TEXT['zh-cn'];
+        let s = map[key] || UI_TEXT['zh-cn'][key] || key;
+        if (params) {
+            for (const k in params) s = s.replace('{' + k + '}', params[k]);
+        }
+        return s;
+    }
+
+    async function detectEditorLocale() {
+        const parentWin = (window.parent && window.parent !== window) ? window.parent : (window.top || window);
+        // 1) try parent.siyuan config
+        try {
+            const cfg = parentWin?.siyuan?.config;
+            if (cfg) {
+                const lang = cfg.locale || cfg.lang || cfg.language || (cfg.app && cfg.app.language);
+                if (lang) return normalizeLocale(lang);
+            }
+        } catch (e) { /* cross-origin or missing */ }
+
+        // 2) try parent document lang
+        try {
+            const parentDoc = parentWin?.document;
+            const htmlLang = parentDoc?.documentElement?.lang;
+            if (htmlLang) return normalizeLocale(htmlLang);
+        } catch (e) {}
+
+        // 3) try system API
+        try {
+            const res = await fetch('/api/system/getSysInfo', { method: 'POST' });
+            if (res.ok) {
+                const json = await res.json();
+                const lang = json?.locale || json?.language || json?.lang;
+                if (lang) return normalizeLocale(lang);
+            }
+        } catch (e) {}
+
+        // 4) fallback
+        return normalizeLocale(navigator.language || 'en');
+
+        function normalizeLocale(s) {
+            if (!s) return 'en';
+            s = s.toLowerCase();
+            if (s.startsWith('zh')) return 'zh-cn';
+            if (s.startsWith('en')) return 'en';
+            return s.replace('_', '-');
+        }
+    }
+
+    function applyTranslations() {
+        try {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                if (key) el.textContent = t(key);
+            });
+
+            // Update FullCalendar header/area texts.
+            // NOTE: avoid overwriting FullCalendar built-in button labels (today/week/month) here to prevent duplication
+            try {
+                // project list header
+                const rah = document.querySelector('.fc-resource-area-header');
+                if (rah) rah.textContent = t('projectList');
+
+                // Update custom controls via FullCalendar API to avoid DOM-level text node duplication
+                try { updateCalendarButtonTexts(); } catch (e) { if (DEBUG) console.warn('updateCalendarButtonTexts failed', e); }
+
+                // Normalize duplicated labels in toolbar (some environments may render duplicated label spans)
+                normalizeToolbarLabels();
+            } catch (e) { if (DEBUG) console.warn('toolbar translation failed', e); }
+
+        } catch (e) { if (DEBUG) console.warn('applyTranslations failed', e); }
+    }
+
+    // Normalize toolbar labels by removing duplicate child elements that render the same text, and remove duplicate whole buttons
+    function normalizeToolbarLabels() {
+        try {
+            const toolbar = document.querySelector('.fc-toolbar');
+            if (!toolbar) return;
+
+            // 1) Remove duplicated whole buttons: prefer the first occurrence (use data-cmd or trimmed text as key)
+            const seenButtons = new Map();
+            const allButtons = Array.from(toolbar.querySelectorAll('.fc-button'));
+            allButtons.forEach(btn => {
+                const cmd = (btn.getAttribute('data-cmd') || btn.dataset?.cmd || '').trim();
+                const txt = (btn.textContent || '').trim();
+                const key = cmd || txt;
+                if (!key) return;
+                if (seenButtons.has(key)) {
+                    if (DEBUG) console.log('Removing duplicate toolbar button for key', key);
+                    btn.remove();
+                    return;
+                }
+                seenButtons.set(key, btn);
+            });
+
+            // 2) For each remaining button, remove duplicated descendant elements with identical trimmed text
+            toolbar.querySelectorAll('.fc-button').forEach(btn => {
+                const seen = new Set();
+                const descendants = Array.from(btn.querySelectorAll('*'));
+                descendants.forEach(el => {
+                    const txt = (el.textContent || '').trim();
+                    if (!txt) return;
+                    if (seen.has(txt)) {
+                        // only remove leaf elements to avoid removing containers
+                        if (!el.querySelector('*')) el.remove();
+                    } else {
+                        seen.add(txt);
+                    }
+                });
+
+                // 3) Normalize direct text nodes: collapse duplicate direct text nodes and split doubled text like 'todaytoday'
+                const textNodes = Array.from(btn.childNodes).filter(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+                if (textNodes.length > 1) {
+                    const first = textNodes[0];
+                    first.textContent = first.textContent.trim();
+                    for (let i = 1; i < textNodes.length; i++) textNodes[i].remove();
+                } else if (textNodes.length === 1) {
+                    const t = textNodes[0].textContent.trim();
+                    if (t.length > 1) {
+                        // reduce repeated halves like '刷新刷新' => '刷新'
+                        for (let half = Math.floor(t.length / 2); half >= 1; half--) {
+                            const a = t.slice(0, half);
+                            if ((a + a) === t) {
+                                textNodes[0].textContent = a;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 4) Ensure explicit refresh button text is singular
+            const refreshBtn = toolbar.querySelector('.fc-refreshButton-button, .fc-button.refreshButton, .fc-button[data-cmd="refreshButton"]');
+            if (refreshBtn) {
+                const txt = (refreshBtn.textContent || '').trim();
+                if (txt.length > 1) {
+                    for (let half = Math.floor(txt.length / 2); half >= 1; half--) {
+                        const a = txt.slice(0, half);
+                        if ((a + a) === txt) {
+                            refreshBtn.textContent = a;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (e) { if (DEBUG) console.warn('normalizeToolbarLabels failed', e); }
+    }
+
+    // Toolbar MutationObserver to catch host re-renders (e.g., when navigating prev/next) and re-normalize labels
+    function setupToolbarObserver() {
+        try {
+            const toolbar = document.querySelector('.fc-toolbar');
+            if (!toolbar || typeof MutationObserver === 'undefined') return;
+            // disconnect previous observer if any
+            if (window._gantt_toolbarObserver) {
+                try { window._gantt_toolbarObserver.disconnect(); } catch (e) {}
+                window._gantt_toolbarObserver = null;
+            }
+            // debounce wrapper
+            let timer = null;
+            const obs = new MutationObserver((mutations) => {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                    try {
+                        // Prefer updating via FullCalendar API to keep internal state consistent
+                        if (typeof calendar !== 'undefined' && calendar && calendar.setOption) {
+                            try {
+                                // Merge existing customButtons to preserve handlers
+                                const existingCustom = (calendar && calendar.options && calendar.options.customButtons) || {};
+                                const refreshBtnCfg = Object.assign({}, existingCustom.refreshButton || {}, { text: t('refresh') });
+                                if (!refreshBtnCfg.click) refreshBtnCfg.click = function() { try { refreshData(); } catch (e) {} };
+                                const settingsBtnCfg = Object.assign({}, existingCustom.settingsButton || {}, { text: t('settings') });
+                                if (!settingsBtnCfg.click) settingsBtnCfg.click = function() { try { openColorConfig(); } catch (e) {} };
+                                const newCustom = Object.assign({}, existingCustom, {
+                                    refreshButton: refreshBtnCfg,
+                                    settingsButton: settingsBtnCfg
+                                });
+                                calendar.setOption('customButtons', newCustom);
+                                calendar.setOption('buttonText', Object.assign({}, (calendar && calendar.options && calendar.options.buttonText) || {}, { today: t('today') }));
+                                const existingViews = (calendar && calendar.options && calendar.options.views) || {};
+                                calendar.setOption('views', Object.assign({}, existingViews, {
+                                    resourceTimelineMonth: Object.assign({}, existingViews.resourceTimelineMonth || {}, { buttonText: t('monthView') }),
+                                    resourceTimelineWeek: Object.assign({}, existingViews.resourceTimelineWeek || {}, { buttonText: t('weekView') })
+                                }));
+                            } catch (e) { if (DEBUG) console.warn('observer setOption failed', e); }
+                        }
+                        normalizeToolbarLabels();
+                    } catch (e) { if (DEBUG) console.warn('toolbar observer normalize failed', e); }
+                }, 25);
+            });
+            obs.observe(toolbar, { childList: true, subtree: true });
+            window._gantt_toolbarObserver = obs;
+        } catch (e) { if (DEBUG) console.warn('setupToolbarObserver failed', e); }
+    }
+
+    // Update calendar's button texts via FullCalendar API (preferred) with DOM fallback
+    function updateCalendarButtonTexts() {
+        try {
+            if (typeof calendar !== 'undefined' && calendar && calendar.setOption) {
+                try {
+                    // Merge customButtons to preserve click handlers and other properties
+                    const existingCustom = (calendar && calendar.options && calendar.options.customButtons) || {};
+                    const refreshBtnCfg = Object.assign({}, existingCustom.refreshButton || {}, { text: t('refresh') });
+                    if (!refreshBtnCfg.click) refreshBtnCfg.click = function() { try { refreshData(); } catch (e) {} };
+                    const settingsBtnCfg = Object.assign({}, existingCustom.settingsButton || {}, { text: t('settings') });
+                    if (!settingsBtnCfg.click) settingsBtnCfg.click = function() { try { openColorConfig(); } catch (e) {} };
+                    const newCustom = Object.assign({}, existingCustom, {
+                        refreshButton: refreshBtnCfg,
+                        settingsButton: settingsBtnCfg
+                    });
+                    calendar.setOption('customButtons', newCustom);
+                } catch (e) { if (DEBUG) console.warn('merge customButtons failed', e); }
+                // buttonText and views are safe to overwrite with new localized labels
+                calendar.setOption('buttonText', Object.assign({}, (calendar && calendar.options && calendar.options.buttonText) || {}, { today: t('today') }));
+                const existingViews = (calendar && calendar.options && calendar.options.views) || {};
+                calendar.setOption('views', Object.assign({}, existingViews, {
+                    resourceTimelineMonth: Object.assign({}, existingViews.resourceTimelineMonth || {}, { buttonText: t('monthView') }),
+                    resourceTimelineWeek: Object.assign({}, existingViews.resourceTimelineWeek || {}, { buttonText: t('weekView') })
+                }));
+            } else {
+                const refreshBtn = document.querySelector('.fc-refreshButton-button, .fc-button.refreshButton, .fc-button[data-cmd="refreshButton"]');
+                if (refreshBtn) refreshBtn.textContent = t('refresh');
+                const settingsBtn = document.querySelector('.fc-settings-button, .fc-settingsButton-button, .fc-button.settingsButton');
+                if (settingsBtn) settingsBtn.textContent = t('settings');
+            }
+        } catch (e) { if (DEBUG) console.warn('updateCalendarButtonTexts failed', e); }
+    }
+
+    // Toolbar click delegation: fallback when FullCalendar's handlers are not attached in host
+    function setupToolbarClickDelegation() {
+        try {
+            const calendarEl = document.getElementById('calendar');
+            if (!calendarEl) return;
+            // Avoid multiple bindings
+            if (calendarEl._gantt_toolbar_click_attached) return;
+            calendarEl.addEventListener('click', function(e) {
+                try {
+                    const btn = (e.target && e.target.closest) ? e.target.closest('.fc-button') : null;
+                    if (!btn) return;
+                    const cmd = (btn.getAttribute('data-cmd') || btn.dataset?.cmd || '').trim();
+                    const txt = (btn.textContent || '').trim();
+
+                    // settings button
+                    if (cmd === 'settingsButton' || txt === t('settings') || txt === '⚙️') {
+                        const panel = document.querySelector('.color-config-panel');
+                        if (panel && panel.classList.contains('show')) return;
+                        try { openColorConfig(); } catch (e) { if (DEBUG) console.warn('delegated openColorConfig failed', e); }
+                        return;
+                    }
+
+                    // refresh button
+                    if (cmd === 'refreshButton' || txt.includes(t('refresh')) || txt === t('refresh')) {
+                        try { debouncedRefresh(); } catch (e) { try { refreshData(); } catch (e2) {} }
+                        return;
+                    }
+                } catch (e) { if (DEBUG) console.warn('toolbar click delegation error', e); }
+            }, { passive: false });
+            calendarEl._gantt_toolbar_click_attached = true;
+        } catch (e) { if (DEBUG) console.warn('setupToolbarClickDelegation failed', e); }
+    }
+
+    // Make sure translations are reapplied after data refresh/render
+    async function postRefresh() {
+        try { applyTranslations(); normalizeToolbarLabels(); } catch (e) { if (DEBUG) console.warn('postRefresh failed', e); }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
         getWidgetId();
+        currentLocale = await detectEditorLocale();
         initCalendar();
+        applyTranslations();
+        // set placeholder localization
+        try { document.getElementById('configBlockId').placeholder = t('enterBlockIdPlaceholder'); } catch (e) {}
         refreshData();
     });
 
@@ -1216,7 +1589,8 @@
         calendar = new FullCalendar.Calendar(calendarEl, {
             timeZone: 'local',
             schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source',
-            locale: 'zh-cn',
+            locale: currentLocale,
+            buttonText: { today: t('today') },
             headerToolbar: {
                 left: 'refreshButton today prev,next',
                 center: 'title',
@@ -1224,14 +1598,14 @@
             },
             customButtons: {
                 settingsButton: {
-                    text: '⚙️',
+                    text: t('settings'),
                     click: function() {
                         openColorConfig();
                     }
                 }
                 ,
                 refreshButton: {
-                    text: '刷新',
+                    text: t('refresh'),
                     click: function() {
                         // 手动刷新数据
                         try {
@@ -1249,7 +1623,7 @@
             scrollTime: '08:00',
             aspectRatio: 1.5,
             resourceAreaWidth: '25%',
-            resourceAreaHeaderContent: '项目列表',
+            resourceAreaHeaderContent: t('projectList'),
             nowIndicator: true,  // 显示今日标记线
             scrollTimeReset: false,  // 切换视图时不重置滚动位置
             
@@ -1262,13 +1636,14 @@
                             scrollToTodayCenter();
                             // 视图切换后重新设置滚动同步
                             setupScrollSync();
-                            // 仅使用 headerToolbar 中配置的 refreshButton
+                            // 视图切换后可能会重新渲染工具栏，确保翻译、标签标准化并恢复交互
+                            try { applyTranslations(); normalizeToolbarLabels(); setupToolbarObserver(); setupToolbarClickDelegation(); } catch (e) { if (DEBUG) console.warn('datesSet post-render failed', e); }
                         });
                     });
                 } else {
                     // 生产环境：避免在 rAF 中执行大量工作以减少 DevTools 的 "requestAnimationFrame handler took" 警告
                     // 使用 setTimeout 或 requestIdleCallback 做回退处理
-                    const cb = () => { scrollToTodayCenter(); setupScrollSync(); };
+                    const cb = () => { scrollToTodayCenter(); setupScrollSync(); try { applyTranslations(); normalizeToolbarLabels(); setupToolbarObserver(); setupToolbarClickDelegation(); } catch (e) { if (DEBUG) console.warn('datesSet post-render failed', e); } };
                     if (typeof requestIdleCallback !== 'undefined') {
                         requestIdleCallback(cb, {timeout: 200});
                     } else {
@@ -1279,14 +1654,14 @@
             
             views: {
                 resourceTimelineMonth: {
-                    buttonText: '月视图',
+                    buttonText: t('monthView'),
                     slotDuration: { days: 1 },
                     slotLabelFormat: [
                         { month: 'numeric', day: 'numeric' }  // 显示 12.11 格式
                     ]
                 },
                 resourceTimelineWeek: {
-                    buttonText: '周视图',
+                    buttonText: t('weekView'),
                     slotDuration: { days: 1 },
                     slotLabelFormat: [
                         { month: 'numeric', day: 'numeric' }  // 显示 12.11 格式
@@ -1384,11 +1759,15 @@
         });
 
         calendar.render();
+        // Ensure toolbar is normalized and observer attached on initial render
+        try { normalizeToolbarLabels(); setupToolbarObserver(); } catch (e) { if (DEBUG) console.warn('post-render toolbar init failed', e); }
         
         // 修复：强制同步头部日期栏和甘特条区域的水平滚动
         // 延迟执行以确保 FullCalendar 完全渲染
         setTimeout(function() {
             setupScrollSync();
+            // ensure toolbar click delegation is attached after render
+            try { setupToolbarClickDelegation(); } catch (e) { if (DEBUG) console.warn('post-render attach click delegation failed', e); }
         }, 100);
 
         // 全局委托右键菜单：在 #calendar 上只绑定一次监听器，避免为每个事件创建闭包
@@ -1416,6 +1795,7 @@
     let lastBodyScroller = null;
     let scrollSyncAttempts = 0; // 重试计数，避免无限重试
     let scrollSyncObserver = null; // MutationObserver 的引用，确保只创建一次
+    let toolbarObserver = null; // MutationObserver for toolbar de-duplication
     
     // 设置头部和内容区域的滚动同步
     function setupScrollSync() {
@@ -1561,7 +1941,7 @@
             const databaseId = calendarEl?.dataset?.blockId || '';
             
             if (!databaseId) {
-                showError('请输入数据库块ID');
+                showError(t('enterDbId'));
                 return;
             }
             
@@ -1576,14 +1956,14 @@
             });
 
             if (!response.ok) {
-                showError(`网络错误: ${response.status}`);
+                showError(t('networkError', { code: response.status }));
                 return;
             }
 
             const result = await response.json();
             
             if (result.code !== 0) {
-                showError('获取数据库数据失败: ' + (result.msg || '未知错误'));
+                showError(t('fetchDbFail', { msg: result.msg || '未知错误' }));
                 return;
             }
             
@@ -1593,8 +1973,26 @@
             // 解析数据库结构
             const view = result.data.view;
             if (!view || !view.columns || !view.rows) {
-                showError('数据库格式错误');
+                showError(t('dbFormatError'));
                 return;
+            }
+
+            // blocks map: 有些 renderAttributeView 返回会把块内容放在独立的 blocks 列表或映射中
+            const blocks = result.data.blocks || result.data.blockMap || result.data.blocksMap || result.data.blocksList || [];
+            function getBlockContentById(id) {
+                if (!id) return null;
+                try {
+                    if (Array.isArray(blocks)) {
+                        const b = blocks.find(x => x && (x.id === id || x.ID === id || x.blockID === id));
+                        return b?.content || b?.Content || b?.markdown || b?.text || null;
+                    } else if (blocks && typeof blocks === 'object') {
+                        const b = blocks[id] || blocks[id.toString()];
+                        return b?.content || b?.Content || b?.markdown || b?.text || null;
+                    }
+                } catch (e) {
+                    if (DEBUG) console.warn('getBlockContentById error', e);
+                }
+                return null;
             }
 
             // 预分配并重用容器以减少临时对象与分配（最大化性能）
@@ -1620,15 +2018,116 @@
 
             if (DEBUG) console.log('列信息:', view.columns.map(c => c.name));
 
-            // 查找关键列
+            // 查找关键列：先按精确名（忽略大小写）匹配 -> 包含匹配；当存在多个候选时优先选择类型为 block/template 的列
             const findColumn = (names) => {
-                return view.columns.find(col => names.includes(col.name));
+                const targets = names.map(n => n.toLowerCase());
+                const cols = Array.isArray(view.columns) ? view.columns : [];
+                if (cols.length === 0) return null;
+                // 先尝试精确匹配（忽略大小写/前后空白）
+                let exact = cols.filter(col => targets.includes((col.name || '').toLowerCase().trim()));
+                if (exact.length === 1) return exact[0];
+                if (exact.length > 1) {
+                    // 优先选择类型为 block/template 的列
+                    const prefer = exact.find(c => (c.type && c.type.toLowerCase().includes('block')) || (c.type && c.type.toLowerCase().includes('template')) || (c.valueType && c.valueType.toLowerCase && c.valueType.toLowerCase().includes('block')));
+                    if (prefer) return prefer;
+                    return exact[0];
+                }
+                // 再尝试包含匹配
+                const contains = cols.filter(col => {
+                    const n = (col.name || '').toLowerCase();
+                    return targets.some(t => n.includes(t));
+                });
+                if (contains.length === 1) return contains[0];
+                if (contains.length > 1) {
+                    const prefer = contains.find(c => (c.type && c.type.toLowerCase().includes('block')) || (c.type && c.type.toLowerCase().includes('template')) || (c.valueType && c.valueType.toLowerCase && c.valueType.toLowerCase().includes('block')));
+                    if (prefer) return prefer;
+                    return contains[0];
+                }
+                return null;
             };
 
-            const nameCol = findColumn(['TODO', '项目内容', '项目名称', '标题', 'headline']);
+            let nameCol = findColumn(['TODO', '项目内容', '项目名称', '项目', '项目列表', '标题', 'headline', 'project', 'project name', 'project list', 'name']);
             const statusCol = findColumn(['状态', 'status']);
             const startCol = findColumn(['开始日', '开始时间', '开始日期', 'start']);
             const endCol = findColumn(['截止日', '截止时间', '截止日期', 'end']);
+
+            if (DEBUG) console.log('候选列信息:', view.columns.map(c => ({id:c.id, name:c.name, type:c.type || c.valueType || ''})));
+
+            // 验证所选的 nameCol 是否真的包含可解析的项目名称；否则尝试回退到其他列
+            const parseProjectNameFromCell = (cell, idx) => {
+                if (!cell) return null;
+                try {
+                    let val = null;
+                    if (typeof cell === 'string') val = cell;
+                    else if (cell.block && cell.block.content) val = cell.block.content;
+                    else if (cell.text && cell.text.content) val = cell.text.content;
+                    else if (cell.content) val = cell.content;
+                    else if (cell.plainText) val = cell.plainText;
+                    else if (cell.value && typeof cell.value === 'string') val = cell.value;
+
+                    if (!val && (cell.block && (cell.block.id || cell.blockID))) {
+                        const bid = cell.block.id || cell.blockID;
+                        val = getBlockContentById(bid) || val;
+                    }
+                    if (!val && (cell.blockID || cell.blockId || cell.block_id)) {
+                        const bid = cell.blockID || cell.blockId || cell.block_id;
+                        val = getBlockContentById(bid) || val;
+                    }
+
+                    if (val) return String(val).replace(/#[^#]+#/g, '').trim();
+                } catch (e) {
+                    if (DEBUG) console.warn('parseProjectNameFromCell error', e);
+                }
+                return null;
+            };
+
+            const columnHasValues = (col) => {
+                if (!col || !col.id) return false;
+                for (let i = 0; i < view.rows.length; i++) {
+                    const rv = view.rows[i];
+                    const cv = (() => {
+                        try {
+                            if (Array.isArray(rv.cells)) {
+                                const c = rv.cells.find(c => c.keyID === col.id || c.value?.keyID === col.id || c.colId === col.id || c.columnId === col.id || c.key === col.id);
+                                return (c && (c.value || c)) || null;
+                            }
+                            if (rv.cells && typeof rv.cells === 'object') {
+                                const c = rv.cells[col.id] || Object.values(rv.cells).find(v => v && (v.keyID === col.id || v.value?.keyID === col.id));
+                                return (c && (c.value || c)) || null;
+                            }
+                        } catch (e) {
+                            if (DEBUG) console.warn('columnHasValues getCellValue error', e);
+                        }
+                        return null;
+                    })();
+                    const nm = parseProjectNameFromCell(cv, i);
+                    if (nm && nm.length > 0) return true;
+                }
+                return false;
+            };
+
+            // 如果初始选出的 nameCol 没有有效值，尝试在候选列或所有列中寻找第一个包含值的列
+            if (nameCol && !columnHasValues(nameCol)) {
+                if (DEBUG) console.warn('初选 nameCol 未包含任何可解析的项目名称，尝试回退查找...');
+                // 优先用常见名称候选再遍历所有列
+                const preferred = ['项目内容', '项目名称', 'TODO', '项目', '标题', 'name'];
+                let found = null;
+                for (const p of preferred) {
+                    const c = findColumn([p]);
+                    if (c && columnHasValues(c)) { found = c; break; }
+                }
+                if (!found) {
+                    for (const c of view.columns) {
+                        if (columnHasValues(c)) { found = c; break; }
+                    }
+                }
+                if (found) {
+                    if (DEBUG) console.log('回退选择到列:', found.name, found.id);
+                    nameCol = found; // eslint-disable-line no-func-assign
+                } else {
+                    if (DEBUG) console.warn('未找到任何包含项目名的列');
+                }
+            }
 
             // 保存数据库和列ID供更新使用
             avId = result.data.id;
@@ -1738,7 +2237,7 @@
             }
 
             if (!nameCol) {
-                showError('未找到项目名称列（支持：TODO、项目内容、项目名称、标题）');
+                showError(t('missingNameColumn'));
                 return;
             }
 
@@ -1748,23 +2247,75 @@
             view.rows.forEach((row, index) => {
                 try {
                             if (DEBUG) console.log(`处理行 ${index}:`, row);
-                    // 获取单元格值
+                    // 获取单元格值（增强兼容性：支持数组/映射结构、多种 key 名）
                     const getCellValue = (colId) => {
-                        const cell = row.cells.find(c => c.value?.keyID === colId);
-                        return cell?.value;
+                        if (!colId) return null;
+                        try {
+                            // 常见结构：row.cells 为数组，元素形如 { keyID, value } 或 { value: { keyID: '...' } }
+                            if (Array.isArray(row.cells)) {
+                                let c = row.cells.find(c => c.keyID === colId || c.value?.keyID === colId || c.colId === colId || c.key === colId || c.columnId === colId);
+                                if (c) return c.value || c;
+                                // 有些实现将 keyID 放在 c.value.keyID 之外，尝试更宽松的匹配
+                                c = row.cells.find(c => (c.value && (c.value.keyID === colId || c.value.keyId === colId)));
+                                if (c) return c.value || c;
+                            }
+
+                            // 另一种可能：row.cells 为对象映射 { [colId]: cell }
+                            if (row.cells && typeof row.cells === 'object' && !Array.isArray(row.cells)) {
+                                let c = row.cells[colId] || row.cells[colId.toString()];
+                                if (c) return c.value || c;
+                                // 宽松找法
+                                c = Object.values(row.cells).find(v => v && (v.keyID === colId || v.value?.keyID === colId || v.key === colId));
+                                if (c) return c.value || c;
+                            }
+                        } catch (e) {
+                            if (DEBUG) console.warn('getCellValue error', e);
+                        }
+                        return null;
                     };
 
                     // 行ID（用于API更新）- 这是数据库内部的行ID
                     const rowId = row.id;
                     
-                    // 项目名称
+                    // 项目名称（增强解析，多路径尝试）
                     const nameCell = getCellValue(nameCol.id);
-                    let projectName = nameCell?.block?.content || nameCell?.text?.content || `项目${index + 1}`;
+                    let projectName = null;
+
+                    if (typeof nameCell === 'string') projectName = nameCell;
+                    else if (nameCell && typeof nameCell === 'object') {
+                        projectName = nameCell.block?.content || nameCell.text?.content || nameCell.content || nameCell.plainText || nameCell.value || null;
+                        // 如果 block 存在但没有 content，尝试从返回体的 blocks 列表/映射中查找真实内容
+                        if (!projectName && (nameCell.block && (nameCell.block.id || nameCell.blockID))) {
+                            const bid = nameCell.block.id || nameCell.blockID;
+                            const bc = getBlockContentById(bid);
+                            if (bc) {
+                                projectName = bc;
+                                if (DEBUG) console.log(`通过 blocks 映射解析到项目名: ${projectName} (blockId=${bid})`);
+                            }
+                        }
+                        // 有些返回会把块ID直接放在 cell.blockID 或 blockID 字段
+                        if (!projectName && (nameCell.blockID || nameCell.blockId || nameCell.block_id)) {
+                            const bid = nameCell.blockID || nameCell.blockId || nameCell.block_id;
+                            const bc = getBlockContentById(bid);
+                            if (bc) {
+                                projectName = bc;
+                                if (DEBUG) console.log(`通过 blocks 映射解析到项目名: ${projectName} (blockId=${bid})`);
+                            }
+                        }
+                    }
+
+                    if (!projectName) {
+                        // 诊断日志：记录无法解析的 row，以便用户提供示例用于进一步排查
+                        console.warn(`无法解析项目名称（使用回退名） rowIndex=${index} rowId=${row.id} nameCol=${nameCol?.id} columns=[${view.columns.map(c=>c.name).join(', ')}]`);
+                        if (DEBUG) console.warn(`行 ${index} 未能解析项目名称，row.cells:`, row.cells);
+                        projectName = t('projectIndex', { n: index + 1 });
+                    }
+
                     if (DEBUG) console.log(`原始项目名称: "${projectName}"`);
                     // 删除所有标签（如 #1#, #数据库名# 等，匹配 #任意内容# 格式），使用全局替换
-                    projectName = projectName.replace(/#[^#]+#/g, '').trim();
+                    projectName = String(projectName).replace(/#[^#]+#/g, '').trim();
                     if (DEBUG) console.log(`处理后项目名称: "${projectName}"`);
-                    const blockId = nameCell?.block?.id || `temp_${index}`;
+                    const blockId = (nameCell && nameCell.block && nameCell.block.id) ? nameCell.block.id : `temp_${index}`;
 
                     // 状态 - 处理单选类型
                     const statusCell = getCellValue(statusCol?.id);
@@ -1946,11 +2497,12 @@
             }
 
             if (DEBUG) console.log(`加载了 ${resources.length} 个项目`);
+            try { applyTranslations(); } catch (e) { if (DEBUG) console.warn('post-refresh translations failed', e); }
             profileEnd(_p_refresh);
 
         } catch (e) {
             console.error("获取数据异常:", e);
-            showError("获取数据异常: " + e.message);
+            showError(t('fetchException', { msg: e.message }));
         }
     }
 
